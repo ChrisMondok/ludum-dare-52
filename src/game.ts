@@ -1,62 +1,33 @@
-import {Entity} from './main.js';
-import {persistent} from './serialization.js';
+import {Level} from './level.js';
+import {Player} from './player.js';
 import {Terrain} from './terrain.js';
-import {HELD_KEYS, PRESSED_KEYS} from './keyboard.js';
 import {GRID_SIZE} from './constants.js';
+import {Entity} from './main.js';
+import {Camera} from './camera.js';
 
 export class Game implements Entity {
-  readonly canvas: HTMLCanvasElement;
-  readonly ctx: CanvasRenderingContext2D;
+  levels: Level[];
 
-  @persistent()
-  private readonly entities: Entity[] = [];
-
-  @persistent()
-  readonly terrain: Terrain[] = [];
-
-  width = 800;
-  height = 800;
+  currentLevel: Level;
 
   constructor() {
-    const canvas = this.canvas = document.createElement('canvas');
-    canvas.width = this.width;
-    canvas.height = this.height;
-    this.ctx = this.canvas.getContext('2d')!;
-
-    new ResizeObserver(([entry]) => {
-      this.width = this.canvas.width = entry.contentRect.width;
-      this.height = this.canvas.height = entry.contentRect.height;
-    }).observe(canvas);
+    const level = new Level();
+    level.add(new Player());
+    const ground = new Terrain();
+    ground.x = GRID_SIZE * 4;
+    ground.y = GRID_SIZE * 10;
+    ground.width = GRID_SIZE * 16;
+    ground.height = GRID_SIZE * 2;
+    level.add(ground);
+    this.levels = [level];
+    this.currentLevel = level;
   }
 
   tick(dt: number) {
-    for(const e of this.entities) e.tick?.(dt);
-    if(PRESSED_KEYS.has('Control')) console.log(Array.from(HELD_KEYS.keys()).join(', '));
+    this.currentLevel.tick(dt);
   }
 
-  draw() {
-    this.ctx.clearRect(0, 0, this.width, this.height);
-    if(HELD_KEYS.has('g')) this.drawGrid();
-    for(const e of this.entities) e.draw?.(this.ctx);
-  }
-
-  add(entity: Entity) {
-    entity.game = this;
-    this.entities.push(entity);
-    if(entity instanceof Terrain) this.terrain.push(entity);
-  }
-
-  private drawGrid() {
-    this.ctx.beginPath();
-    for(let y = 0.5; y <= this.height + 1; y += GRID_SIZE) {
-      this.ctx.moveTo(0.5, y);
-      this.ctx.lineTo(this.width, y);
-    }
-    for(let x = 0.5; x <= this.width + 1; x += GRID_SIZE) {
-      this.ctx.moveTo(x, 0.5);
-      this.ctx.lineTo(x, this.height);
-    }
-    this.ctx.stroke();
+  draw(camera: Camera) {
+    this.currentLevel.draw(camera);
   }
 }
-

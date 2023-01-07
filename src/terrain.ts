@@ -1,6 +1,7 @@
 import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Point} from './math.js';
+import {Camera} from './camera.js';
 
 export class Terrain implements Entity {
 
@@ -9,7 +10,7 @@ export class Terrain implements Entity {
   @persistent() width = 0;
   @persistent() height = 0;
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw({ctx}: Camera) {
     ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 

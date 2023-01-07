@@ -1,21 +1,16 @@
-import {serialize} from './serialization.js';
 import {PRESSED_KEYS} from './keyboard.js';
-import {Player} from './player.js';
-import {Terrain} from './terrain.js';
+import {Level} from './level.js';
+import {Camera} from './camera.js';
+import {Editor} from './editor.js';
 import {Game} from './game.js';
-import {GRID_SIZE} from './constants.js';
 
 function init() {
   const game = new Game();
-  (window as any).game = game;
-  document.body.appendChild(game.canvas);
-  game.add(new Player());
-  const ground = new Terrain();
-  ground.x = GRID_SIZE * 4;
-  ground.y = GRID_SIZE * 10;
-  ground.width = GRID_SIZE * 16;
-  ground.height = GRID_SIZE * 2;
-  game.add(ground);
+  const editor = new Editor(game);
+
+  const camera = new Camera();
+  document.body.appendChild(camera.canvas);
+  document.body.appendChild(editor.toolbar);
 
   requestAnimationFrame(tick);
 
@@ -24,23 +19,34 @@ function init() {
     if(then) {
       const dt = (now - then) / 1000;
       game.tick(dt);
-      game.draw();
+      camera.clear();
+      if(editor.active) camera.drawGrid();
+      game.draw(camera);
     }
     then = now;
     requestAnimationFrame(tick);
+    doHotkeys();
     PRESSED_KEYS.clear();
   }
 
-  (window as any).save = function() {
-    console.log(JSON.parse(serialize(game)));
+  function doHotkeys() {
+    if(PRESSED_KEYS.has('`')) {
+      editor.active = !editor.active
+      document.body.classList.toggle('editing', editor.active);
+    }
   }
-}
 
+  camera.canvas.addEventListener('mousedown', evt => editor.mousedown(evt));
+  camera.canvas.addEventListener('mouseup', evt => editor.mouseup(evt));
+  camera.canvas.addEventListener('mousemove', evt => editor.mousemove(evt));
+}
 
 addEventListener('load', init);
 
 export interface Entity {
-  draw?(ctx: CanvasRenderingContext2D): void;
+  draw?(camera: Camera): void;
   tick?(dt: number): void;
-  game?: Game;
+  level?: Level;
 }
+
+

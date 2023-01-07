@@ -3,7 +3,8 @@ import {HELD_KEYS, PRESSED_KEYS} from './keyboard.js';
 import {GRAVITY, GRID_SIZE} from './constants.js';
 import {Entity} from './main.js';
 import {Terrain} from './terrain.js';
-import {Game} from './game.js';
+import {Level} from './level.js';
+import {Camera} from './camera.js';
 
 const GROUND_SPEED = 10 * GRID_SIZE;
 const GROUND_ACCELERATION = 50 * GRID_SIZE;
@@ -23,7 +24,7 @@ export class Player implements Entity {
   dy = 0;
 
   @persistent()
-  game!: Game;
+  level!: Level;
 
   readonly height = GRID_SIZE;
   readonly width = GRID_SIZE / 2;
@@ -47,7 +48,7 @@ export class Player implements Entity {
     }
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw({ctx}: Camera) {
     ctx.beginPath();
     ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
   }
@@ -81,7 +82,7 @@ export class Player implements Entity {
 
   private getGround(): Terrain|null {
     let ground: Terrain|null = null;
-    for(let t of this.game.terrain) {
+    for(let t of this.level.terrain) {
       if(!t.isBelow(this)) continue;
       if(!ground) {
         ground = t;
