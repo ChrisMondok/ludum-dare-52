@@ -33,13 +33,15 @@ export function deserialize(json: string): any {
       for(const [key, value] of Object.entries(data).filter(([key]) => key !== '@type' && key !== '@id')) {
         instance[key] = deserializeData(value);
       }
+      if('deserialized' in instance) {
+        instance.deserialized();
+      }
       return instance;
     } else {
       const obj = Object.fromEntries(Object.entries(data).map(([key, value]) => ([key, deserializeData(value)])));
       if('@id' in data) instances.set(obj['@id'], obj);
       return obj;
     }
-
   }
 
   return deserializeData(JSON.parse(json));
@@ -64,6 +66,6 @@ export function serialize(thing: Object) {
   return JSON.stringify(thing, replacer, 2);
 }
 
-interface Type<T> {
+export interface Type<T> {
   new(): T;
 }

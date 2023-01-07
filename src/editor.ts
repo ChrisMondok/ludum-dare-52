@@ -1,25 +1,30 @@
+import {Level} from './level.js';
 import {GRID_SIZE} from './constants.js';
-import {Player} from './player.js';
+import {SpawnPoint} from './player.js';
+import {Entity} from './main.js';
 import {Terrain} from './terrain.js';
 import {serialize, deserialize} from './serialization.js';
-import {Point} from './math.js';
+import {Point, contains, isShape} from './math.js';
 import {Game} from './game.js';
+import {Seed} from './seed.js';
 
 export class Editor {
   readonly toolbar: HTMLElement;
-  active = false;
+  static active = false;
+  private readonly newButton = makeButton('new', () => this.newLevel());
   private readonly saveButton = makeButton('save', () => this.save());
   private readonly saveAsButton = makeButton('save as', () => this.saveAs());
   private readonly loadButton = makeButton('load', () => this.load());
-  private readonly toolSelect = makeSelect(['none', 'terrain', 'player']);
+  private readonly toolSelect = makeSelect(['move', 'inspect', 'terrain', 'player', 'seed']);
 
   private fileHandle?: FileSystemFileHandle;
 
-  private activeThing: Player|Terrain|null = null;
+  private activeThing: Entity|null= null;
 
   constructor(private readonly game: Game) {
     this.toolbar = document.createElement('div');
     this.toolbar.classList.add('editor', 'toolbar')
+    this.toolbar.appendChild(this.newButton);
     this.toolbar.appendChild(this.saveButton);
     this.toolbar.appendChild(this.saveAsButton);
     this.toolbar.appendChild(this.loadButton);
@@ -28,38 +33,69 @@ export class Editor {
   }
 
   mousedown(evt: MouseEvent) {
-    if(!this.active) return;
+    if(!Editor.active) return;
     const mode = this.toolSelect.value;
     switch(mode) { 
-      case 'player':
-        this.activeThing = this.findOrCreatePlayer();
-        this.mousemove(evt);
-        break;
-      case 'terrain':
-        this.activeThing = this.createTerrain(this.getClickedPointOnGrid(evt));
-        break;
       default:
         console.log(`tool ${mode} not implemented`);
+        return;
+      case 'inspect':
+        console.log(this.findThingUnderCursor(evt));
+        break;
+      case 'move':
+        this.activeThing = this.findThingUnderCursor(evt);
+        break;
+      case 'player':
+        this.activeThing = this.findOrCreateSpawnPoint();
+        break;
+      case 'terrain':
+        if(evt.button === 0) {
+          this.activeThing = this.createTerrain(this.getClickedPointOnGrid(evt));
+        } else if(evt.button === 2) {
+          this.deleteTerrainAt(this.getClickedPoint(evt));
+        }
+        break;
+      case 'seed':
+        this.activeThing = new Seed();
+        this.game.currentLevel.add(this.activeThing);
         break;
     }
+    evt.preventDefault();
+    this.mousemove(evt);
   }
 
-  private findOrCreatePlayer() {
-    const [level] = this.game.levels;
-    let player = level.entities.find(e => e instanceof Player) as Player|undefined;
-    if(!player) {
-      player = new Player();
-      level.add(player);
+  private findThingUnderCursor(evt: MouseEvent) {
+    const point = this.getClickedPoint(evt);
+    return this.game.currentLevel.entities.find(e => {
+      if(!isShape(e)) return false;
+      return contains(e, point);
+    }) ?? null;
+  }
+
+  private findOrCreateSpawnPoint(): SpawnPoint {
+    const level = this.game.currentLevel;
+    let spawnPoint = level.getEntitiesOfType(SpawnPoint)[0];
+    if(!spawnPoint) {
+      spawnPoint = new SpawnPoint();
+      level.add(spawnPoint);
     }
-    return player;
+    return spawnPoint;
   }
 
   private createTerrain(point: Point) {
     const terrain = new Terrain();
     terrain.x = point.x;
     terrain.y = point.y;
-    this.game.levels[0].add(terrain);
+    this.game.currentLevel.add(terrain);
     return terrain;
+  }
+
+  private deleteTerrainAt(point: Point) {
+    const level = this.game.currentLevel;
+    const terrains = [...level.getEntitiesOfType(Terrain)];
+    for(const terrain of terrains) {
+      if(contains(terrain, point)) level.remove(terrain);
+    }
   }
 
   mouseup(_evt: MouseEvent) {
@@ -68,27 +104,34 @@ export class Editor {
 
   mousemove(evt: MouseEvent) {
     if(!this.activeThing) return;
-    if(this.activeThing instanceof Player) {
+    if(this.activeThing instanceof Terrain) {
+      const clickedCell = this.getClickedPointOnGrid(evt);
+      this.activeThing.width = Math.max(clickedCell.x - this.activeThing.x + GRID_SIZE, GRID_SIZE);
+      this.activeThing.height = Math.max(clickedCell.y - this.activeThing.y + GRID_SIZE, GRID_SIZE);
+    } else {
+      if(!isShape(this.activeThing)) return;
       const clickedPoint = this.getClickedPoint(evt);
       this.activeThing.x = clickedPoint.x;
       this.activeThing.y = clickedPoint.y;
-    } else if(this.activeThing instanceof Terrain) {
-      const clickedCell = this.getClickedPointOnGrid(evt);
-      this.activeThing.width = clickedCell.x - this.activeThing.x;
-      this.activeThing.height = clickedCell.y - this.activeThing.y;
     }
   }
 
   private getClickedPointOnGrid(evt: MouseEvent): Point {
     const {x, y} = this.getClickedPoint(evt);
     return {
-      x: Math.ceil(x / GRID_SIZE) * GRID_SIZE,
-      y: Math.ceil(y / GRID_SIZE) * GRID_SIZE,
+      x: Math.floor(x / GRID_SIZE) * GRID_SIZE,
+      y: Math.floor(y / GRID_SIZE) * GRID_SIZE,
     };
   }
 
   private getClickedPoint(evt: MouseEvent): Point {
     return { x: evt.offsetX, y: evt.offsetY };
+  }
+
+  private newLevel() {
+    const newLevel = new Level();
+    this.game.levels.push(newLevel);
+    this.game.currentLevel = newLevel;
   }
 
   private async load() {
@@ -100,7 +143,8 @@ export class Editor {
       const file = await this.fileHandle.getFile();
       const json = await file.text();
       const levels = deserialize(json);
-      this.game.levels = levels;
+      this.game.levels.length = 0;
+      this.game.levels.push(...levels);
       this.game.currentLevel = this.game.levels[0];
     } finally {
       this.fileHandle = undefined;

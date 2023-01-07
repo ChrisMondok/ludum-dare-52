@@ -4,8 +4,8 @@ import {Camera} from './camera.js';
 import {Editor} from './editor.js';
 import {Game} from './game.js';
 
-function init() {
-  const game = new Game();
+async function init() {
+  const game = await Game.load('./levels.json');
   const editor = new Editor(game);
 
   const camera = new Camera();
@@ -18,9 +18,9 @@ function init() {
   function tick(now: number) {
     if(then) {
       const dt = (now - then) / 1000;
-      game.tick(dt);
+      if(!Editor.active) game.tick(dt);
       camera.clear();
-      if(editor.active) camera.drawGrid();
+      if(Editor.active) camera.drawGrid();
       game.draw(camera);
     }
     then = now;
@@ -31,14 +31,17 @@ function init() {
 
   function doHotkeys() {
     if(PRESSED_KEYS.has('`')) {
-      editor.active = !editor.active
-      document.body.classList.toggle('editing', editor.active);
+      Editor.active = !Editor.active
+      document.body.classList.toggle('editing', Editor.active);
     }
   }
 
   camera.canvas.addEventListener('mousedown', evt => editor.mousedown(evt));
   camera.canvas.addEventListener('mouseup', evt => editor.mouseup(evt));
   camera.canvas.addEventListener('mousemove', evt => editor.mousemove(evt));
+  camera.canvas.addEventListener('contextmenu', evt => {
+    if(Editor.active) evt.preventDefault();
+  });
 }
 
 addEventListener('load', init);
@@ -48,5 +51,3 @@ export interface Entity {
   tick?(dt: number): void;
   level?: Level;
 }
-
-

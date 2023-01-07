@@ -1,26 +1,22 @@
 import {Level} from './level.js';
-import {Player} from './player.js';
-import {Terrain} from './terrain.js';
-import {GRID_SIZE} from './constants.js';
+import {deserialize} from './serialization.js';
 import {Entity} from './main.js';
 import {Camera} from './camera.js';
 
 export class Game implements Entity {
-  levels: Level[];
-
   currentLevel: Level;
 
-  constructor() {
-    const level = new Level();
-    level.add(new Player());
-    const ground = new Terrain();
-    ground.x = GRID_SIZE * 4;
-    ground.y = GRID_SIZE * 10;
-    ground.width = GRID_SIZE * 16;
-    ground.height = GRID_SIZE * 2;
-    level.add(ground);
-    this.levels = [level];
-    this.currentLevel = level;
+  constructor(readonly levels: Level[]) {
+    this.currentLevel = levels[0];
+  }
+
+  static async load(path: string) {
+    const response = await fetch(path);
+    if(!response.ok) {
+      throw new Error(`${response.status}: ${response.statusText}`);
+    }
+    const levels = deserialize(await response.text());
+    return new Game(levels);
   }
 
   tick(dt: number) {
