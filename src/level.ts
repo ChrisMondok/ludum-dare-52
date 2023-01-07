@@ -12,6 +12,9 @@ export class Level implements Entity, Rectangle {
   @persistent() name = "unnamed level";
   private readonly entitiesByType = new Map<any, any>;
 
+  // huh that's weird
+  readonly level = this;
+
   readonly xOrigin = 'left';
   readonly yOrigin = 'top';
 

@@ -8,7 +8,7 @@ import {Entity} from './main.js';
 import {Level} from './level.js';
 import {Terrain} from './terrain.js';
 import {Camera} from './camera.js';
-import {Rectangle, Circle, contains, distSquared} from './math.js';
+import {Rectangle, Circle, touches, distSquared} from './math.js';
 
 const GROUND_SPEED = 10 * GRID_SIZE;
 const GROUND_ACCELERATION = 50 * GRID_SIZE;
@@ -53,12 +53,12 @@ export class Player implements Entity, Rectangle {
       this.doPlanting();
     }
 
-    if(!contains(this.level, this)) {
+    if(!touches(this.level, this)) {
       this.level.remove(this);
     }
 
     for(const seed of this.level.getEntitiesOfType(Seed)) {
-      if(contains(this, seed)) {
+      if(touches(this, seed)) {
         this.level.remove(seed);
         this.seeds++;
         console.log(this.seeds);
@@ -72,7 +72,7 @@ export class Player implements Entity, Rectangle {
   }
 
   toString() {
-    return `Player at ${this.x}, ${this.y}`;
+    return `player at ${this.x}, ${this.y}`;
   }
 
   private doWalking(dt: number) {
@@ -106,7 +106,7 @@ export class Player implements Entity, Rectangle {
     // harvest
     for(const plant of this.level.getEntitiesOfType(Plant)) {
       if(distSquared(this, plant) < Math.pow(GRID_SIZE, 2)) {
-        this.level.remove(plant);
+        plant.harvest();
         return;
       }
     }

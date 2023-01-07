@@ -1,4 +1,4 @@
-import {Circle, contains} from './math.js';
+import {Circle, touches} from './math.js';
 import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Camera} from './camera.js';
@@ -26,7 +26,7 @@ export class Seed implements Entity, Circle {
       this.dy = Math.min(this.dy, 0);
     }
 
-    if(!contains(this.level, this)) {
+    if(!touches(this.level, this)) {
       this.level.remove(this);
     }
   }

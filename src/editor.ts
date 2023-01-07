@@ -4,7 +4,7 @@ import {SpawnPoint} from './player.js';
 import {Entity} from './main.js';
 import {Terrain} from './terrain.js';
 import {serialize, deserialize} from './serialization.js';
-import {Point, contains, isShape} from './math.js';
+import {Point, touches, isShape} from './math.js';
 import {Game} from './game.js';
 import {Seed} from './seed.js';
 
@@ -14,6 +14,7 @@ export class Editor {
   private readonly newButton = makeButton('new', () => this.newLevel());
   private readonly saveButton = makeButton('save', () => this.save());
   private readonly saveAsButton = makeButton('save as', () => this.saveAs());
+  private readonly revertButton = makeButton('revert', () => this.revert());
   private readonly loadButton = makeButton('load', () => this.load());
   private readonly toolSelect = makeSelect(['move', 'inspect', 'terrain', 'player', 'seed']);
 
@@ -28,6 +29,7 @@ export class Editor {
     this.toolbar.appendChild(this.saveButton);
     this.toolbar.appendChild(this.saveAsButton);
     this.toolbar.appendChild(this.loadButton);
+    this.toolbar.appendChild(this.revertButton);
     this.toolbar.appendChild(this.toolSelect);
     this.updateEnabledness();
   }
@@ -57,7 +59,7 @@ export class Editor {
         break;
       case 'seed':
         this.activeThing = new Seed();
-        this.game.currentLevel.add(this.activeThing);
+        this.game.level.add(this.activeThing);
         break;
     }
     evt.preventDefault();
@@ -66,14 +68,14 @@ export class Editor {
 
   private findThingUnderCursor(evt: MouseEvent) {
     const point = this.getClickedPoint(evt);
-    return this.game.currentLevel.entities.find(e => {
+    return this.game.level.entities.find(e => {
       if(!isShape(e)) return false;
-      return contains(e, point);
+      return touches(e, point);
     }) ?? null;
   }
 
   private findOrCreateSpawnPoint(): SpawnPoint {
-    const level = this.game.currentLevel;
+    const level = this.game.level;
     let spawnPoint = level.getEntitiesOfType(SpawnPoint)[0];
     if(!spawnPoint) {
       spawnPoint = new SpawnPoint();
@@ -86,15 +88,15 @@ export class Editor {
     const terrain = new Terrain();
     terrain.x = point.x;
     terrain.y = point.y;
-    this.game.currentLevel.add(terrain);
+    this.game.level.add(terrain);
     return terrain;
   }
 
   private deleteTerrainAt(point: Point) {
-    const level = this.game.currentLevel;
+    const level = this.game.level;
     const terrains = [...level.getEntitiesOfType(Terrain)];
     for(const terrain of terrains) {
-      if(contains(terrain, point)) level.remove(terrain);
+      if(touches(terrain, point)) level.remove(terrain);
     }
   }
 
@@ -130,34 +132,40 @@ export class Editor {
 
   private newLevel() {
     const newLevel = new Level();
-    this.game.levels.push(newLevel);
-    this.game.currentLevel = newLevel;
+    this.game.levels.unshift(newLevel);
+    this.game.level = newLevel;
   }
 
   private async load() {
     const handles = await window.showOpenFilePicker?.(fileOptions);
     try {
       this.fileHandle = handles?.[0];
-      this.updateEnabledness();
-      if(!this.fileHandle) return;
-      const file = await this.fileHandle.getFile();
-      const json = await file.text();
-      const levels = deserialize(json);
-      this.game.levels.length = 0;
-      this.game.levels.push(...levels);
-      this.game.currentLevel = this.game.levels[0];
-    } finally {
+      this.revert();
+    } catch (e) {
       this.fileHandle = undefined;
+    } finally {
       this.updateEnabledness();
     }
+  }
+
+  private async revert() {
+    if(!this.fileHandle) return;
+    const file = await this.fileHandle.getFile();
+    const json = await file.text();
+    const levels = deserialize(json);
+    this.game.levels.length = 0;
+    this.game.levels.push(...levels);
+    this.game.level = this.game.levels[0];
   }
 
   private async saveAs() {
     try {
       this.fileHandle = await window.showSaveFilePicker?.(fileOptions);
       this.save();
-    } finally {
+    }
+    catch (e) {
       this.fileHandle = undefined;
+    } finally {
       this.updateEnabledness();
     }
   }
@@ -173,6 +181,7 @@ export class Editor {
 
   private updateEnabledness() {
     this.saveButton.disabled = !this.fileHandle;
+    this.revertButton.disabled = !this.fileHandle;
   }
 }
 

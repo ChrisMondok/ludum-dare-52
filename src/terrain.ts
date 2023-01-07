@@ -1,8 +1,9 @@
 import {GRID_SIZE} from './constants.js';
 import {Entity} from './main.js';
+import {Editor} from './editor.js';
 import {Level} from './level.js';
 import {persistent} from './serialization.js';
-import {Shape, Rectangle, getBottomOf, getTopOf, getRightOf, getLeftOf} from './math.js';
+import {Shape, Rectangle, getBottomOf, getTopOf, getRightOf, getLeftOf, Point} from './math.js';
 import {Camera} from './camera.js';
 
 export class Terrain implements Entity, Rectangle {
@@ -10,8 +11,11 @@ export class Terrain implements Entity, Rectangle {
   @persistent() y = 0;
   @persistent() width = 0;
   @persistent() height = 0;
+  @persistent() jumpPaths: JumpPath[] = [];
   readonly xOrigin = 'left';
   readonly yOrigin = 'top';
+
+  level!: Level;
 
   draw({ctx}: Camera) {
     ctx.save();
@@ -21,6 +25,16 @@ export class Terrain implements Entity, Rectangle {
     ctx.fillRect(this.x, this.y, this.width, Math.min(this.height, GRID_SIZE));
     ctx.fillStyle = '#7fb054';
     ctx.fillRect(this.x, this.y, this.width, Math.min(this.height, GRID_SIZE / 2));
+
+    if(Editor.active) {
+      ctx.setLineDash([5, 5]);
+      for(const path of this.jumpPaths) {
+        ctx.beginPath();
+        ctx.moveTo(path.origin.x, path.origin.y);
+        ctx.lineTo(path.destination.x, path.destination.y);
+      }
+    }
+
     ctx.restore();
   }
 
@@ -77,4 +91,13 @@ export class Terrain implements Entity, Rectangle {
     }
     return ceiling;
   }
+}
+
+export interface JumpPath {
+  origin: JumpPoint;
+  destination: JumpPoint;
+}
+
+export interface JumpPoint extends Point {
+  to: Terrain;
 }

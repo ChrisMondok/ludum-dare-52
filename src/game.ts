@@ -4,10 +4,10 @@ import {Entity} from './main.js';
 import {Camera} from './camera.js';
 
 export class Game implements Entity {
-  currentLevel: Level;
+  level: Level;
 
   constructor(readonly levels: Level[]) {
-    this.currentLevel = levels[0];
+    this.level = levels[0];
   }
 
   static async load(path: string) {
@@ -20,10 +20,10 @@ export class Game implements Entity {
   }
 
   tick(dt: number) {
-    this.currentLevel.tick(dt);
+    this.level.tick(dt);
   }
 
   draw(camera: Camera) {
-    this.currentLevel.draw(camera);
+    this.level.draw(camera);
   }
 }

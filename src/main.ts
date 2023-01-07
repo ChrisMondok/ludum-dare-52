@@ -4,6 +4,9 @@ import {Camera} from './camera.js';
 import {Editor} from './editor.js';
 import {Game} from './game.js';
 
+Editor.active = true;
+document.body.classList.add('editing');
+
 async function init() {
   const game = await Game.load('./levels.json');
   const editor = new Editor(game);
@@ -49,5 +52,5 @@ addEventListener('load', init);
 export interface Entity {
   draw?(camera: Camera): void;
   tick?(dt: number): void;
-  level?: Level;
+  level: Level;
 }

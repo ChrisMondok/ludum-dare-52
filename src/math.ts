@@ -15,15 +15,15 @@ export interface Circle extends Point {
 }
 
 
-export function contains(container: Shape, point: Point) {
+export function touches(container: Shape, point: Point) {
   if(isCircle(container)) {
     return distSquared(container, point) <= Math.pow(container.radius, 2);
   }
   if(isRectangle(container)) {
-    return point.x >= getLeftOf(container) &&
-      point.x <= getRightOf(container) &&
-      point.y >= getTopOf(container) &&
-      point.y <= getBottomOf(container);
+    return getRightOf(point) >= getLeftOf(container) &&
+      getLeftOf(point) <= getRightOf(container) &&
+      getBottomOf(point) >= getTopOf(container) &&
+      getTopOf(point) <= getBottomOf(container);
   }
   return point.x === point.y && container.x === container.y;
 }
@@ -108,4 +108,9 @@ export function getBottomOf(shape: Shape) {
   else {
     return shape.y;
   }
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  if(min > max) return clamp(value, max, min);
+  return Math.max(Math.min(value, max), min);
 }

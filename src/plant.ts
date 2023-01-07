@@ -3,6 +3,7 @@ import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Camera} from './camera.js';
 import {Level} from './level.js';
+import {Enemy, Spawner} from './enemy.js';
 
 export class Plant implements Entity, Rectangle {
   @persistent() x = 0;
@@ -38,6 +39,15 @@ export class Plant implements Entity, Rectangle {
     for(const leaf of this.leaves) {
       drawLeaf(camera.ctx, this.x, this.y - (this.height * leaf.position), leaf.rotation, leaf.size);
     }
+  }
+
+  harvest() {
+    const enemy = new Enemy();
+    enemy.x = this.x;
+    enemy.y = this.y;
+    const spawner = new Spawner(enemy, 2);
+    this.level.add(spawner);
+    this.level.remove(this);
   }
 
   toString() {

@@ -9,153 +9,73 @@
     "entities": [
       {
         "@id": 2,
-        "@type": "SpawnPoint",
-        "x": 240,
-        "y": 120,
-        "level": {
-          "@ref": 1
-        }
+        "@type": "Terrain",
+        "x": 96,
+        "y": 384,
+        "width": 192,
+        "height": 64
       },
       {
         "@id": 3,
         "@type": "Terrain",
-        "x": 128,
-        "y": 320,
-        "width": 512,
+        "x": 576,
+        "y": 384,
+        "width": 192,
         "height": 64
       },
       {
-        "@id": 5,
-        "@type": "Seed",
-        "x": 425,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
+        "@id": 4,
+        "@type": "SpawnPoint",
+        "x": 136,
+        "y": 325,
         "level": {
           "@ref": 1
         }
+      },
+      {
+        "@id": 5,
+        "@type": "Terrain",
+        "x": 0,
+        "y": 480,
+        "width": 800,
+        "height": 96
       },
       {
         "@id": 6,
-        "@type": "Seed",
-        "x": 439,
-        "y": 316,
-        "dx": 0,
+        "@type": "Player",
+        "x": 237.81422543999722,
+        "y": 384,
+        "dx": -79.95199999999895,
         "dy": 0,
         "level": {
           "@ref": 1
-        }
+        },
+        "seeds": 11
       },
       {
         "@id": 7,
-        "@type": "Seed",
-        "x": 453,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
+        "@type": "Plant",
+        "x": 390.7322695999976,
+        "y": 480,
+        "age": 2.8338999999999888,
+        "handedness": -1,
+        "leaves": [],
         "level": {
           "@ref": 1
         }
       },
       {
         "@id": 8,
-        "@type": "Seed",
-        "x": 463,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 9,
-        "@type": "Seed",
-        "x": 489,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 10,
-        "@type": "Seed",
-        "x": 510,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 11,
-        "@type": "Seed",
-        "x": 534,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 12,
-        "@type": "Seed",
-        "x": 558,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 13,
-        "@type": "Seed",
-        "x": 579,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 14,
-        "@type": "Seed",
-        "x": 597,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 15,
-        "@type": "Seed",
-        "x": 599,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
-      },
-      {
-        "@id": 16,
-        "@type": "Seed",
-        "x": 608,
-        "y": 316,
-        "dx": 0,
-        "dy": 0,
-        "level": {
-          "@ref": 1
-        }
+        "@type": "Spawner",
+        "enemy": {
+          "@id": 9,
+          "@type": "Enemy",
+          "x": 630,
+          "y": 384
+        },
+        "timeUntilSpawned": 0.7497500000000064
       }
-    ]
+    ],
+    "name": "unnamed level"
   }
 ]
