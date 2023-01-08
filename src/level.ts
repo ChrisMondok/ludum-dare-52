@@ -2,6 +2,7 @@ import {Entity} from './main.js';
 import {persistent, Type} from './serialization.js';
 import {Rectangle, distSquared, Point} from './math.js';
 import {Camera} from './camera.js';
+import {playSoundAt, SoundName} from './sounds.js';
 
 export class Level implements Entity, Rectangle {
   @persistent() x = 0;
@@ -10,6 +11,7 @@ export class Level implements Entity, Rectangle {
   @persistent() height = 800;
   @persistent() entities: Entity[] = [];
   @persistent() name = "unnamed level";
+  @persistent() seeds = 0;
   private readonly entitiesByType = new Map<any, any>;
 
   // huh that's weird
@@ -76,6 +78,13 @@ export class Level implements Entity, Rectangle {
       }
     }
     return closest;
+  }
+
+  playSoundAt(sound: SoundName, position: Point) {
+    const center = (this.x + this.width / 2);
+    const x = (position.x - center) / (this.width / 2);
+    const y = 0;
+    playSoundAt(sound, x, y);
   }
 }
 

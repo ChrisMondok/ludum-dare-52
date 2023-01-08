@@ -1,9 +1,9 @@
-import {Rectangle} from './math.js';
+import {Rectangle, randomBetween} from './math.js';
 import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Camera} from './camera.js';
 import {Level} from './level.js';
-import {Enemy, FAST_RANGED_ARCHETYPE, SLOW_RANGED_ARCHETYPE, EnemyArchetype} from './enemy.js';
+import {Enemy, ENEMY_ARCHETYPES, EnemyArchetype} from './enemy.js';
 import {Spawner} from './spawner.js';
 import {Seed} from './seed.js';
 
@@ -45,21 +45,22 @@ export class Plant implements Entity, Rectangle {
   }
 
   harvest() {
+    this.level.playSoundAt('destroy', this);
     this.queueEnemy(2);
     this.level.remove(this);
     this.spawnGoodies();
   }
 
   distroyWithoutHarvesting() {
+    this.level.playSoundAt('destroy', this);
     this.queueEnemy(0);
     this.level.remove(this);
   }
 
-  queueEnemy(delay: number) {
-    const enemy = new Enemy(SLOW_RANGED_ARCHETYPE);
+  queueEnemy(delay: number, archetype?: EnemyArchetype) {
+    const enemy = new Enemy(archetype ?? this.stages[0].enemyArchetype);
     enemy.x = this.x;
     enemy.y = this.y;
-    Object.assign(enemy, this.stages[0].enemyArchetype);
     const spawner = new Spawner(enemy, delay);
     this.level.add(spawner);
   }
@@ -69,13 +70,14 @@ export class Plant implements Entity, Rectangle {
   }
 
   spawnGoodies() {
-    for(let i = 0; i < 3; i++) {
+    for(let i = 0; i < this.leaves.length * 2; i++) {
       const seed = new Seed();
       seed.x = this.x;
       seed.y = this.y;
       seed.dy = -300;
-      seed.dx = Math.random() * 500 - 250;
-      const spawner = new Spawner(seed, 1);
+      seed.dx = randomBetween(-200, 200);
+      const delay = randomBetween(0.2, 1);
+      const spawner = new Spawner(seed, delay);
       this.level.add(spawner);
     }
   }
@@ -97,7 +99,7 @@ interface Leaf {
 const plantStages: PlantStage[] = [
   {
     maxAge: 5,
-    enemyArchetype: SLOW_RANGED_ARCHETYPE,
+    enemyArchetype: ENEMY_ARCHETYPES.SLOW_RANGED_ARCHETYPE,
     tick() {
       this.width = 2 + 3 * (this.age / 5);
       this.height = 8 + 16 * (this.age / 5);
@@ -117,7 +119,7 @@ const plantStages: PlantStage[] = [
   },
   {
     maxAge: 40,
-    enemyArchetype: FAST_RANGED_ARCHETYPE,
+    enemyArchetype: ENEMY_ARCHETYPES.FAST_RANGED_ARCHETYPE,
     tick() {
       this.width = 5 + this.age / 4;
       this.height = this.age * 5;
@@ -137,11 +139,11 @@ const plantStages: PlantStage[] = [
     }
   },
   {
-    enemyArchetype: SLOW_RANGED_ARCHETYPE,
+    enemyArchetype: ENEMY_ARCHETYPES.SLOW_RANGED_ARCHETYPE,
     maxAge: Infinity,
     tick() {
       if(this.spawnEnemyCooldown <= 0) {
-        this.queueEnemy(0);
+        this.queueEnemy(0, ENEMY_ARCHETYPES.SLOW_MELEE_ARCHETYPE);
         this.spawnEnemyCooldown = this.minTimeBetweenEnemySpawns;
       }
     },

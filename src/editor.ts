@@ -2,6 +2,7 @@ import {Level} from './level.js';
 import {GRID_SIZE} from './constants.js';
 import {SpawnPoint} from './player.js';
 import {Entity} from './main.js';
+import {Enemy, ENEMY_ARCHETYPES} from './enemy.js';
 import {Terrain} from './terrain.js';
 import {serialize, deserialize} from './serialization.js';
 import {Point, touches, isShape} from './math.js';
@@ -15,7 +16,7 @@ export class Editor {
   private readonly saveAsButton = makeButton('save as', () => this.saveAs());
   private readonly revertButton = makeButton('revert', () => this.revert());
   private readonly loadButton = makeButton('load', () => this.load());
-  private readonly toolSelect = makeSelect(['move', 'inspect', 'terrain', 'player', 'seed']);
+  private readonly toolSelect = makeSelect(['move', 'inspect', 'terrain', 'player', 'seed', 'enemy']);
 
   private fileHandle?: FileSystemFileHandle;
 
@@ -54,6 +55,9 @@ export class Editor {
         } else if(evt.button === 2) {
           this.deleteTerrainAt(this.getClickedPoint(evt));
         }
+        break;
+      case 'enemy':
+        this.activeThing = this.createEnemy(this.getClickedPoint(evt));
         break;
       case 'seed':
         this.activeThing = new Seed();
@@ -96,6 +100,14 @@ export class Editor {
     for(const terrain of terrains) {
       if(touches(terrain, point)) level.remove(terrain);
     }
+  }
+
+  private createEnemy(at: Point) {
+    const enemy = new Enemy(ENEMY_ARCHETYPES.SLOW_MELEE_ARCHETYPE);
+    enemy.x = at.x;
+    enemy.y = at.y;
+    this.game.level.add(enemy);
+    return enemy;
   }
 
   mouseup(_evt: MouseEvent) {

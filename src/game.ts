@@ -6,7 +6,7 @@ import {Camera} from './camera.js';
 export class Game implements Entity {
   level: Level;
 
-  paused = false;
+  paused = true;
 
   constructor(readonly levels: Level[]) {
     this.level = levels[0];

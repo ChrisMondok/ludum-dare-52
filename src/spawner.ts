@@ -33,6 +33,7 @@ export class Spawner implements Entity, Point {
     if(this.timeUntilSpawned <= 0) {
       this.level.remove(this);
       this.level.add(this.contents);
+      this.level.playSoundAt('spawn', this);
     }
   }
 

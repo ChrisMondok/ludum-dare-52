@@ -3,6 +3,7 @@ import {Level} from './level.js';
 import {Camera} from './camera.js';
 import {Editor} from './editor.js';
 import {Game} from './game.js';
+import {audioContext, setVolume} from './sounds.js';
 
 async function init() {
   const game = await Game.load('./levels.json');
@@ -55,6 +56,9 @@ async function init() {
     if(Editor.active) editor.mousedown(evt);
   });
   camera.canvas.addEventListener('mouseup', evt => {
+    audioContext.resume().catch(e => {
+      console.error(`Couldn't resume the audio context:\n${e}`);
+    });
     if(Editor.active) {
       editor.mouseup(evt);
     } else {
@@ -67,6 +71,13 @@ async function init() {
   camera.canvas.addEventListener('contextmenu', evt => {
     if(Editor.active) evt.preventDefault();
   });
+
+  const volumeControl = document.getElementById('volume-input') as HTMLInputElement;
+  volumeControl.addEventListener('input', () => {
+    setVolume(Number(volumeControl.value));
+  });
+
+  setVolume(Number(volumeControl.value));
 }
 
 addEventListener('load', init);

@@ -20,10 +20,10 @@ export class Player implements Entity, Rectangle {
   readonly width = GRID_SIZE / 2;
   readonly xOrigin = 'center';
   readonly yOrigin = 'bottom';
+  readonly invulnurabilityTime = 1;
   readonly minTimeBetweenAttacks = 0.5;
   readonly attackSpeed = 500;
   readonly attackTTL = 0.10;
-  readonly invulnurabilityTime = 1;
 
   @persistent() x = 0;
   @persistent() y = 0;
@@ -31,8 +31,6 @@ export class Player implements Entity, Rectangle {
   @persistent() dy = 0;
 
   @persistent() level!: Level;
-
-  @persistent() seeds = 0;
 
   @persistent() attackCooldown = 0;
   @persistent() attackDirection = 1;
@@ -76,7 +74,8 @@ export class Player implements Entity, Rectangle {
     for(const seed of this.level.getEntitiesOfType(Seed)) {
       if(touches(this, seed)) {
         this.level.remove(seed);
-        this.seeds++;
+        this.level.seeds++;
+        this.level.playSoundAt('pickup', this);
       }
     }
   }
@@ -87,7 +86,7 @@ export class Player implements Entity, Rectangle {
     ctx.globalAlpha = 1 - ((this.invulnurableFor * 3) % 1);
     ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
     ctx.restore();
-    ctx.fillText(`seeds: ${this.seeds.toString()}`, 16, 16);
+    ctx.fillText(`seeds: ${this.level.seeds.toString()}`, 16, 16);
     ctx.fillText(`health: ${this.health.toString()}`, 16, 32);
   }
 
@@ -101,7 +100,12 @@ export class Player implements Entity, Rectangle {
     this.dy += source.impactY;
     this.invulnurableFor = this.invulnurabilityTime;
     this.health--;
-    if(this.health < 0) this.level.remove(this);
+    if(this.health < 0) {
+      this.level.remove(this);
+      this.level.playSoundAt('bigouch', this);
+    } else {
+      this.level.playSoundAt('ouch', this);
+    }
     return true;
   }
 
@@ -119,6 +123,7 @@ export class Player implements Entity, Rectangle {
 
     if(PRESSED_KEYS.has('KeyW') || PRESSED_KEYS.has('KeyI') || PRESSED_KEYS.has('Space')) {
       this.dy -= JUMP_SPEED;
+      this.level.playSoundAt('playerjump', this);
     }
   }
 
@@ -142,8 +147,8 @@ export class Player implements Entity, Rectangle {
     }
 
     // plant (if nothing to harvest)
-    if(!this.seeds) return;
-    this.seeds--;
+    if(!this.level.seeds) return;
+    this.level.seeds--;
     const plant = new Plant();
     plant.x = this.x;
     plant.y = this.y;
@@ -167,6 +172,7 @@ export class Player implements Entity, Rectangle {
       attack.ttl = this.attackTTL;
       attack.blocksAttacks = true;
       this.level.add(attack);
+      this.level.playSoundAt('melee', this);
     }
   }
 }
@@ -184,6 +190,7 @@ export class SpawnPoint implements Entity, Circle {
       const player = new Player();
       player.x = this.x;
       player.y = this.y;
+      this.level.playSoundAt('playerspawn', this);
       this.level.add(player);
     }
   }

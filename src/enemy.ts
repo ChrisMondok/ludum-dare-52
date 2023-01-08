@@ -1,6 +1,7 @@
 import {GRID_SIZE, GRAVITY} from './constants.js';
 import {Player} from './player.js';
 import {Rectangle, Shape, Point, getBottomOf, getTopOf, getRightOf, getLeftOf, clamp, distSquared, getVerticalCenterOf, randomBetween} from './math.js';
+import {SoundName} from './sounds.js';
 import {Camera} from './camera.js';
 import {Terrain} from './terrain.js';
 import {Entity} from './main.js';
@@ -21,6 +22,8 @@ export const SLOW_RANGED_ARCHETYPE: EnemyArchetype = {
   minTimeBetweenJumps: 2.5,
   attackSpeed: 300,
   attackTTL: 5,
+  attackImpact: 200,
+  attackSound: 'shoot',
 }
 
 export const FAST_RANGED_ARCHETYPE: EnemyArchetype = {
@@ -33,7 +36,29 @@ export const FAST_RANGED_ARCHETYPE: EnemyArchetype = {
   minTimeBetweenJumps: 2.5,
   attackSpeed: 300,
   attackTTL: 5,
+  attackImpact: 200,
+  attackSound: 'shoot',
 }
+
+export const SLOW_MELEE_ARCHETYPE: EnemyArchetype = {
+  jumpSpeed: GRAVITY / 3,
+  walkSpeed: 5 * GRID_SIZE,
+  groundAcceleration: 100 * GRID_SIZE,
+  maxDistanceFromPlayer: GRID_SIZE,
+  minDistanceFromPlayer: 4,
+  minTimeBetweenJumps: 2.5,
+  minTimeBetweenAttacks: 2,
+  attackSpeed: 500,
+  attackTTL: 0.10,
+  attackImpact: 200,
+  attackSound: 'melee',
+}
+
+export const ENEMY_ARCHETYPES = {
+  SLOW_RANGED_ARCHETYPE,
+  FAST_RANGED_ARCHETYPE,
+  SLOW_MELEE_ARCHETYPE,
+};
 
 export class Enemy implements Entity, Rectangle {
   readonly level!: Level;
@@ -52,6 +77,8 @@ export class Enemy implements Entity, Rectangle {
   @persistent() minTimeBetweenJumps = 2.5;
   @persistent() attackSpeed = 300;
   @persistent() attackTTL = 5;
+  @persistent() attackImpact = 200;
+  @persistent() attackSound: SoundName = 'shoot';
 
   @persistent() x = 0;
   @persistent() y = 0;
@@ -182,6 +209,7 @@ export class Enemy implements Entity, Rectangle {
       this.dy = -1 * this.jumpSpeed;
       this.dx = (this.jumpTarget.x - this.x) / jumpTime;
       this.jumpCooldown = this.minTimeBetweenJumps;
+      this.level.playSoundAt('jump', this);
     } else {
       console.log(`Aborting jump that's too high`);
     }
@@ -290,9 +318,10 @@ export class Enemy implements Entity, Rectangle {
       attack.ttl = this.attackTTL;
       attack.dx = direction * this.attackSpeed;
       attack.target = 'player';
-      attack.impactY = -200;
-      attack.impactX = 200 * direction;
+      attack.impactY = -1 * this.attackImpact;
+      attack.impactX = this.attackImpact * direction;
       this.level.add(attack);
+      this.level.playSoundAt(this.attackSound, this);
     }
   }
 }

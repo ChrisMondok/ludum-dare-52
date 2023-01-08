@@ -36,7 +36,7 @@ export class DamageBox implements Entity, Rectangle {
       for(const other of this.level.getEntitiesOfType(DamageBox)) {
         if(other.target === this.target) continue;
         if(touches(this, other)) {
-          console.log('blocked');
+          this.level.playSoundAt('block', this);
           this.level.remove(this);
           this.level.remove(other);
           return;
