@@ -6,6 +6,7 @@ import {Terrain} from './terrain.js';
 import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Level} from './level.js';
+import {DamageBox} from './damage-box.js';
 
 export class Spawner implements Entity, Point {
   @persistent() readonly enemy!: Enemy;
@@ -57,6 +58,7 @@ export class Enemy implements Entity, Rectangle {
   @persistent() y = 0;
   @persistent() dx = 0;
   @persistent() dy = 0;
+  @persistent() health = 2;
 
   readonly maxDistanceFromPlayer = GRID_SIZE * 8;
   readonly minDistanceFromPlayer = GRID_SIZE * 3;
@@ -128,11 +130,18 @@ export class Enemy implements Entity, Rectangle {
     // don't fall through the ground
     this.dy = Math.min(this.dy, 0);
 
-    this.walk(this.moveTarget, dt);
+    if(this.dy === 0) this.walk(this.moveTarget, dt);
 
     if(this.jumpTarget) {
       this.jump();
     }
+  }
+
+  takeDamage(source: DamageBox) {
+    this.health--;
+    this.dx += source.impactX;
+    this.dy += source.impactY;
+    if(this.health <= 0) this.level.remove(this);
   }
 
   private walk(to: Point, dt: number) {
@@ -223,16 +232,6 @@ export class Enemy implements Entity, Rectangle {
         };
       }
     }
-
-    //    if(!targetTerrain) return;
-    //
-    //    this.moveTarget.y = getTopOf(targetTerrain);
-    //
-    //
-    //    if(myTerrain && myTerrain !== targetTerrain) {
-    //      const fallPoint = this.getFallPoint(myTerrain, targetTerrain);
-    //      if(fallPoint) this.moveTarget = fallPoint;
-    //    }
   }
 
   private getFallPoint(fromTerrain: Terrain, toTerrain: Terrain): Point|null {

@@ -2,6 +2,7 @@ import {persistent} from './serialization.js';
 import {HELD_KEYS, PRESSED_KEYS} from './keyboard.js';
 import {Seed} from './seed.js';
 import {GRAVITY, GRID_SIZE} from './constants.js';
+import {DamageBox} from './damage-box.js';
 import {Editor} from './editor.js';
 import {Plant} from './plant.js';
 import {Entity} from './main.js';
@@ -12,7 +13,7 @@ import {Rectangle, Circle, touches, distSquared} from './math.js';
 
 const GROUND_SPEED = 10 * GRID_SIZE;
 const GROUND_ACCELERATION = 50 * GRID_SIZE;
-const JUMP_SPEED = GRAVITY / 4;
+const JUMP_SPEED = GRAVITY / 3.5;
 
 export class Player implements Entity, Rectangle {
   @persistent() x = 0;
@@ -24,12 +25,19 @@ export class Player implements Entity, Rectangle {
 
   @persistent() seeds = 0;
 
+  @persistent() attackCooldown = 0;
+  @persistent() attackDirection = 1;
+
   readonly height = GRID_SIZE;
   readonly width = GRID_SIZE / 2;
   readonly xOrigin = 'center';
   readonly yOrigin = 'bottom';
+  readonly minTimeBetweenAttacks = 0.5;
+  readonly attackSpeed = 500;
+  readonly attackTTL = 0.10;
 
   tick(dt: number) {
+    this.attackCooldown = Math.max(0, this.attackCooldown - dt);
     const distanceToGround = Terrain.getDistanceToGround(this.level, this);
     const distanceToCeiling = Terrain.getDistanceToCeiling(this.level, this);
     this.x += this.dx * dt;
@@ -53,6 +61,8 @@ export class Player implements Entity, Rectangle {
       this.doPlanting();
     }
 
+    this.doAttacking();
+
     if(!touches(this.level, this)) {
       this.level.remove(this);
     }
@@ -75,6 +85,10 @@ export class Player implements Entity, Rectangle {
     return `player at ${this.x}, ${this.y}`;
   }
 
+  takeDamage() {
+    console.log('ouch');
+  }
+
   private doWalking(dt: number) {
     const targetSpeed = this.wantToMoveX() * GROUND_SPEED;
     if(targetSpeed !== 0 && this.dx !== 0 && Math.sign(targetSpeed) !== Math.sign(this.dx)) {
@@ -87,20 +101,20 @@ export class Player implements Entity, Rectangle {
       this.dx += delta;
     }
 
-    if(PRESSED_KEYS.has(' ') || PRESSED_KEYS.has('w') || PRESSED_KEYS.has('i') || PRESSED_KEYS.has('z')) {
+    if(PRESSED_KEYS.has('KeyW') || PRESSED_KEYS.has('KeyI')) {
       this.dy -= JUMP_SPEED;
     }
   }
 
   private wantToMoveX(): number {
-    const left = HELD_KEYS.has('ArrowLeft') || HELD_KEYS.has('a') || HELD_KEYS.has('j');
-    const right = HELD_KEYS.has('ArrowRight') || HELD_KEYS.has('d') || HELD_KEYS.has('l');
+    const left = HELD_KEYS.has('ArrowLeft') || HELD_KEYS.has('KeyA') || HELD_KEYS.has('KeyJ');
+    const right = HELD_KEYS.has('ArrowRight') || HELD_KEYS.has('KeyD') || HELD_KEYS.has('KeyL');
     if(left == right) return 0;
     return left ? -1 : 1;
   }
 
   private doPlanting() {
-    const isPressingTheButton = PRESSED_KEYS.has('s') || PRESSED_KEYS.has('k') || PRESSED_KEYS.has('x');
+    const isPressingTheButton = PRESSED_KEYS.has('KeyS') || PRESSED_KEYS.has('KeyK');
     if(!isPressingTheButton) return;
     
     // harvest
@@ -118,6 +132,25 @@ export class Player implements Entity, Rectangle {
     plant.x = this.x;
     plant.y = this.y;
     this.level.add(plant);
+  }
+
+  private doAttacking() {
+    if(this.dx !== 0) this.attackDirection = Math.sign(this.dx);
+    if(this.attackCooldown > 0) return;
+    if(PRESSED_KEYS.has('KeyX') || PRESSED_KEYS.has('ShiftLeft') || PRESSED_KEYS.has('ShiftRight')) {
+      this.attackCooldown = this.minTimeBetweenAttacks;
+      const attack = new DamageBox();
+      attack.width = GRID_SIZE;
+      attack.height = GRID_SIZE;
+      attack.x = this.x + this.attackDirection * ((attack.width + this.width) / 2);
+      attack.y = this.y - this.height / 2;
+      attack.impactX = 200 * this.attackDirection;
+      attack.impactY = -200;
+      attack.dx = this.dx + this.attackSpeed * this.attackDirection;
+      attack.dy = this.dy;
+      attack.ttl = this.attackTTL;
+      this.level.add(attack);
+    }
   }
 }
 

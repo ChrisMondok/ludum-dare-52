@@ -33,7 +33,7 @@ async function init() {
   }
 
   function doHotkeys() {
-    if(PRESSED_KEYS.has('`')) {
+    if(PRESSED_KEYS.has('Backquote')) {
       Editor.active = !Editor.active
       document.body.classList.toggle('editing', Editor.active);
     }
