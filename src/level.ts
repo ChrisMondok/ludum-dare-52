@@ -23,6 +23,11 @@ export class Level implements Entity, Rectangle {
   }
 
   draw(camera: Camera) {
+    const {ctx} = camera;
+    ctx.save();
+    ctx.fillStyle = 'skyblue';
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+    ctx.restore();
     for(const e of this.entities) e.draw?.(camera);
   }
 

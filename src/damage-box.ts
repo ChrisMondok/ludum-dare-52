@@ -6,6 +6,7 @@ import {Level} from './level.js';
 import {Camera} from './camera.js';
 import {Enemy} from './enemy.js';
 import {Player} from './player.js';
+import {Plant} from './plant.js';
 
 export class DamageBox implements Entity, Rectangle {
   @persistent() target: 'enemy'|'player' = 'enemy';
@@ -42,6 +43,11 @@ export class DamageBox implements Entity, Rectangle {
         }
       }
     }
+    for(const plant of this.level.getEntitiesOfType(Plant)) {
+      if(touches(this, plant)) {
+        plant.distroyWithoutHarvesting();
+      }
+    }
     for(const target of this.getPotentialTargets()) {
       if(touches(this, target)) {
         hit = target.takeDamage(this) || hit;
@@ -52,8 +58,22 @@ export class DamageBox implements Entity, Rectangle {
 
   draw({ctx}: Camera) {
     ctx.save();
-    ctx.fillStyle = 'purple';
-    ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+    const direction = Math.sign(this.dx);
+    if(this.target === 'player') {
+      ctx.beginPath();
+      ctx.fillStyle = 'green';
+      ctx.ellipse(this.x, this.y, this.width / 2, this.height / 2, 0, 0, 2 * Math.PI, false);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = 'purple';
+      ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(this.x - this.width / 2 * direction, this.y + this.height / 2);
+      ctx.lineTo(this.x + this.width / 2 * direction, this.y - this.height / 2);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 

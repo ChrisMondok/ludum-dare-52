@@ -88,6 +88,7 @@ export class Player implements Entity, Rectangle {
     ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
     ctx.restore();
     ctx.fillText(`seeds: ${this.seeds.toString()}`, 16, 16);
+    ctx.fillText(`health: ${this.health.toString()}`, 16, 32);
   }
 
   toString() {

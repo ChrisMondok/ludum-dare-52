@@ -1,37 +1,38 @@
-import {Point} from './math.js';
+import {Shape, Point} from './math.js';
 import {Camera} from './camera.js';
 import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Level} from './level.js';
-import {Enemy} from './enemy.js';
 import {Editor} from './editor.js';
 
+type Spawnable = Entity&Shape;
+
 export class Spawner implements Entity, Point {
-  @persistent() readonly enemy!: Enemy;
+  @persistent() readonly contents!: Spawnable;
   @persistent() timeUntilSpawned!: number;
 
   get x() {
-    return this.enemy.x;
+    return this.contents.x;
   }
   
   get y() {
-    return this.enemy.y;
+    return this.contents.y;
   }
 
   // note: ctor args will not be set when deserializing!
-  constructor(enemy: Enemy, delay: number) {
-    this.enemy = enemy;
+  constructor(contents: Spawnable, delay: number) {
+    this.contents = contents;
     this.timeUntilSpawned = delay;
   }
 
   level!: Level;
 
   tick(dt: number) {
-    if(!this.enemy) throw new Error(`EnemySpawner wasn't set up right`);
+    if(!this.contents) throw new Error(`Spawner wasn't set up right`);
     this.timeUntilSpawned -= dt;
     if(this.timeUntilSpawned <= 0) {
       this.level.remove(this);
-      this.level.add(this.enemy);
+      this.level.add(this.contents);
     }
   }
 

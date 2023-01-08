@@ -12,6 +12,21 @@
     <style>
       body:not(.editing) .editor { display: none; }
 
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      #canvas-container {
+        flex: 1 1 auto;
+      }
+
       .toolbar {
         display: flex;
         gap: 1ex;
@@ -83,6 +98,10 @@
         <button> Got it </button>
       </form>
     </dialog>
-    <button onclick="showHelp()"> How to play </button>
+    <div id="canvas-container"></div>
+    <div id="toolbar" class="toolbar">
+      <button onclick="showHelp()"> How to play </button>
+      <div style="flex: 1 1 auto"></div>
+    </div>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import {GRID_SIZE, GRAVITY} from './constants.js';
 import {Player} from './player.js';
-import {Rectangle, Shape, Point, getBottomOf, getTopOf, getRightOf, getLeftOf, clamp, distSquared, getVerticalCenterOf} from './math.js';
+import {Rectangle, Shape, Point, getBottomOf, getTopOf, getRightOf, getLeftOf, clamp, distSquared, getVerticalCenterOf, randomBetween} from './math.js';
 import {Camera} from './camera.js';
 import {Terrain} from './terrain.js';
 import {Entity} from './main.js';
@@ -9,21 +9,49 @@ import {Level} from './level.js';
 import {DamageBox} from './damage-box.js';
 import {Editor} from './editor.js';
 
-export class Enemy implements Entity, Rectangle {
-  readonly jumpSpeed = GRAVITY / 4;
-  readonly walkSpeed = 15 * GRID_SIZE;
-  readonly groundAcceleration = 50 * GRID_SIZE;
-  readonly maxDistanceFromPlayer = GRID_SIZE * 8;
-  readonly minDistanceFromPlayer = GRID_SIZE * 3;
-  readonly minTimeBetweenAttacks = 2;
-  readonly minTimeBetweenJumps = 2.5;
-  readonly attackSpeed = 300;
-  readonly attackTTL = 5;
+export type EnemyArchetype = Partial<Enemy>;
 
+export const SLOW_RANGED_ARCHETYPE: EnemyArchetype = {
+  jumpSpeed: GRAVITY / 4,
+  walkSpeed: 5 * GRID_SIZE,
+  groundAcceleration: 100 * GRID_SIZE,
+  maxDistanceFromPlayer: GRID_SIZE * 8,
+  minDistanceFromPlayer: GRID_SIZE * 3,
+  minTimeBetweenAttacks: 2,
+  minTimeBetweenJumps: 2.5,
+  attackSpeed: 300,
+  attackTTL: 5,
+}
+
+export const FAST_RANGED_ARCHETYPE: EnemyArchetype = {
+  jumpSpeed: GRAVITY / 3,
+  walkSpeed: 15 * GRID_SIZE,
+  groundAcceleration: 100 * GRID_SIZE,
+  maxDistanceFromPlayer: GRID_SIZE * 8,
+  minDistanceFromPlayer: GRID_SIZE * 3,
+  minTimeBetweenAttacks: 2,
+  minTimeBetweenJumps: 2.5,
+  attackSpeed: 300,
+  attackTTL: 5,
+}
+
+export class Enemy implements Entity, Rectangle {
   readonly level!: Level;
 
   readonly xOrigin = 'center';
   readonly yOrigin = 'bottom';
+  readonly minTimeToUpdateTargets = 0.25;
+  readonly maxTimeToUpdateTargets = 1;
+
+  @persistent() jumpSpeed = GRAVITY / 3;
+  @persistent() walkSpeed = 5 * GRID_SIZE;
+  @persistent() groundAcceleration = 100 * GRID_SIZE;
+  @persistent() maxDistanceFromPlayer = GRID_SIZE * 8;
+  @persistent() minDistanceFromPlayer = GRID_SIZE * 3;
+  @persistent() minTimeBetweenAttacks = 2;
+  @persistent() minTimeBetweenJumps = 2.5;
+  @persistent() attackSpeed = 300;
+  @persistent() attackTTL = 5;
 
   @persistent() x = 0;
   @persistent() y = 0;
@@ -39,10 +67,16 @@ export class Enemy implements Entity, Rectangle {
   @persistent() readonly moveTarget: Point = {x: 0, y: 0};
   @persistent() jumpTarget: Point|null = null;
   @persistent() attackCooldown = this.minTimeBetweenAttacks;
+  @persistent() updateTargetCooldown = 0;
+
+  constructor(archetype?: EnemyArchetype) {
+    if(archetype) Object.assign(this, archetype);
+  }
 
   tick(dt: number) {
-    this.updateTargets();
+    this.updateTargetCooldown = Math.max(0, this.updateTargetCooldown - dt);
     this.jumpCooldown = Math.max(0, this.jumpCooldown - dt);
+    this.updateTargets();
 
     const myTerrain = Terrain.getGroundBelow(this.level, this);
     const heightAboveGround = myTerrain ? getTopOf(myTerrain) - getBottomOf(this) : Infinity;
@@ -97,6 +131,10 @@ export class Enemy implements Entity, Rectangle {
       if(this.jumpTarget) {
         ctx.strokeStyle = 'blue';
         ctx.strokeRect(this.jumpTarget.x - 5.5, this.jumpTarget.y - 5.5, 10, 10);
+        ctx.beginPath();
+        ctx.moveTo(this.moveTarget.x, this.moveTarget.y);
+        ctx.lineTo(this.jumpTarget.x, this.jumpTarget.y);
+        ctx.stroke();
       }
 
     }
@@ -112,7 +150,7 @@ export class Enemy implements Entity, Rectangle {
   }
 
   private walk(to: Point, dt: number) {
-    const targetSpeed = distSquared(to, this) < Math.pow(GRID_SIZE, 2)
+    const targetSpeed = distSquared(to, this) < Math.pow(this.width / 2, 2)
       ? 0
       : Math.sign(to.x - this.x) * this.walkSpeed;
     if(targetSpeed !== 0 && this.dx !== 0 && Math.sign(targetSpeed) !== Math.sign(this.dx)) {
@@ -129,7 +167,7 @@ export class Enemy implements Entity, Rectangle {
   private jump() {
     if(!this.jumpTarget) return;
     if(this.jumpCooldown > 0) return;
-    const climb = this.jumpTarget.y - this.y;
+    const climb = this.y - this.jumpTarget.y;
     const timeToTop = this.jumpSpeed / GRAVITY;
     const jumpHeight = this.jumpSpeed * timeToTop + GRAVITY * Math.pow(timeToTop, 2) / 2;
     if(jumpHeight > climb) {
@@ -138,28 +176,38 @@ export class Enemy implements Entity, Rectangle {
       const jumpTime = timeToTop + timeToFall;
       this.dy = -1 * this.jumpSpeed;
       this.dx = (this.jumpTarget.x - this.x) / jumpTime;
-      console.table({dx: this.dx, dy:  this.dy});
       // jumps always come up, consistently, a little short and I can't figure out why.
       this.dx *= 1.6;
       this.jumpCooldown = this.minTimeBetweenJumps;
     } else {
-      console.log(`I can't jump that high`);
+      console.log(`Aborting jump that's too high`);
     }
+  }
+
+  private getMaxJumpHeight() {
+    const timeToTop = this.jumpSpeed / GRAVITY;
+    return this.jumpSpeed * timeToTop + GRAVITY * Math.pow(timeToTop, 2) / 2;
   }
 
   private updateTargets() {
     if(this.target && this.level.entities.indexOf(this.target) === -1)  {
       this.target = null;
     }
+
+    if(this.updateTargetCooldown > 0) return;
+
     if(!this.target) {
       this.jumpTarget = null;
       this.moveTarget.x = this.x;
       this.moveTarget.y = this.y;
       this.target = this.level.closest(Player, this);
-      console.log(`target is ${this.target}`);
     }
 
     if(!this.target) return;
+
+    if(this.target) {
+      this.updateTargetCooldown = Math.random() * (this.maxTimeToUpdateTargets - this.minTimeToUpdateTargets) + this.minTimeToUpdateTargets;
+    }
 
     const myTerrain = Terrain.getGroundBelow(this.level, this);
     const targetTerrain = Terrain.getGroundBelow(this.level, this.target);
@@ -193,10 +241,18 @@ export class Enemy implements Entity, Rectangle {
       } else {
         // move to the closest point to the target on my terrain
         this.moveTarget.x = clamp(this.target.x, getLeftOf(myTerrain) + this.width, getRightOf(myTerrain) - this.width);
-        this.jumpTarget = {
-          x: clamp(this.x, getLeftOf(targetTerrain) + this.width, getRightOf(targetTerrain) - this.width),
-          y: getTopOf(targetTerrain),
-        };
+        const y = getTopOf(targetTerrain);
+        if(this.getMaxJumpHeight() >= this.y - y) {
+          this.jumpTarget = {
+            x: clamp(this.x, getLeftOf(targetTerrain) + this.width, getRightOf(targetTerrain) - this.width),
+            y,
+          };
+        } else {
+          this.jumpTarget = null;
+          this.moveTarget.y = getTopOf(myTerrain);
+          const x = randomBetween(getLeftOf(myTerrain) + this.width / 2, getRightOf(myTerrain) - this.width / 2);
+          this.moveTarget.x = x;
+        }
       }
     }
   }
@@ -227,6 +283,7 @@ export class Enemy implements Entity, Rectangle {
       const attack = new DamageBox();
       attack.x = this.x;
       attack.y = attackHeight;
+      attack.height = GRID_SIZE / 2;
       attack.ttl = this.attackTTL;
       attack.dx = direction * this.attackSpeed;
       attack.target = 'player';

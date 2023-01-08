@@ -3,8 +3,9 @@ import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Camera} from './camera.js';
 import {Level} from './level.js';
-import {Enemy} from './enemy.js';
+import {Enemy, FAST_RANGED_ARCHETYPE, SLOW_RANGED_ARCHETYPE, EnemyArchetype} from './enemy.js';
 import {Spawner} from './spawner.js';
+import {Seed} from './seed.js';
 
 export class Plant implements Entity, Rectangle {
   @persistent() x = 0;
@@ -12,47 +13,71 @@ export class Plant implements Entity, Rectangle {
   @persistent() age = 0;
 
   @persistent()
-  readonly handedness = Math.random() > 0.5 ? 1 : -1;
+  readonly rotation = Math.random() * 2 * Math.PI;
 
-  @persistent()
-  readonly leaves: Leaf[] = [];
+  @persistent() readonly leaves: Leaf[] = [];
 
   width = 8;
   height = 16;
 
   @persistent() level!: Level;
 
+  @persistent() spawnEnemyCooldown = 0;
+  readonly minTimeBetweenEnemySpawns = 15;
+
   readonly xOrigin = 'center';
   readonly yOrigin = 'bottom';
 
-  stage: PlantStage = plantStages[0];
-  private readonly stages = [...plantStages];
+  readonly stages = [...plantStages];
 
   tick(dt: number) {
     this.age += dt;
-    if(this.age > this.stages[0].maxAge) this.stages.shift();
-    this.stage = this.stages[0];
-    this.stage.tick.call(this);
+    this.spawnEnemyCooldown = Math.max(0, this.spawnEnemyCooldown - dt);
+    while(this.stages.length && this.age > this.stages[0].maxAge) {
+      this.stages.shift();
+    }
+    const stage = this.stages[0];
+    stage.tick.call(this);
   }
 
   draw(camera: Camera) {
-    this.stage.draw.call(this, camera);
-    for(const leaf of this.leaves) {
-      drawLeaf(camera.ctx, this.x, this.y - (this.height * leaf.position), leaf.rotation, leaf.size);
-    }
+    this.stages[0].draw.call(this, camera);
   }
 
   harvest() {
-    const enemy = new Enemy();
+    this.queueEnemy(2);
+    this.level.remove(this);
+    this.spawnGoodies();
+  }
+
+  distroyWithoutHarvesting() {
+    this.queueEnemy(0);
+    this.level.remove(this);
+  }
+
+  queueEnemy(delay: number) {
+    const enemy = new Enemy(SLOW_RANGED_ARCHETYPE);
     enemy.x = this.x;
     enemy.y = this.y;
-    const spawner = new Spawner(enemy, 2);
+    Object.assign(enemy, this.stages[0].enemyArchetype);
+    const spawner = new Spawner(enemy, delay);
     this.level.add(spawner);
-    this.level.remove(this);
   }
 
   toString() {
     return `plant at ${this.x}, ${this.y}, with age ${this.age}`;
+  }
+
+  spawnGoodies() {
+    for(let i = 0; i < 3; i++) {
+      const seed = new Seed();
+      seed.x = this.x;
+      seed.y = this.y;
+      seed.dy = -300;
+      seed.dx = Math.random() * 500 - 250;
+      const spawner = new Spawner(seed, 1);
+      this.level.add(spawner);
+    }
   }
 }
 
@@ -60,6 +85,7 @@ interface PlantStage {
   maxAge: number;
   tick(this: Plant): void;
   draw(this: Plant, camera: Camera): void;
+  enemyArchetype: EnemyArchetype;
 }
 
 interface Leaf {
@@ -71,15 +97,16 @@ interface Leaf {
 const plantStages: PlantStage[] = [
   {
     maxAge: 5,
+    enemyArchetype: SLOW_RANGED_ARCHETYPE,
     tick() {
       this.width = 2 + 3 * (this.age / 5);
-      this.height = 8 + 16 * (this.age / this.stage.maxAge);
+      this.height = 8 + 16 * (this.age / 5);
     },
     draw({ctx}: Camera) {
       ctx.save();
       ctx.beginPath();
       ctx.translate(this.x, this.y);
-      ctx.scale(this.handedness, 1);
+      ctx.scale(Math.sign(this.rotation - Math.PI), 1);
       ctx.lineWidth = this.width;
       ctx.lineCap = 'round';
       ctx.strokeStyle = 'green';
@@ -89,62 +116,47 @@ const plantStages: PlantStage[] = [
     }
   },
   {
-    maxAge: 20,
+    maxAge: 40,
+    enemyArchetype: FAST_RANGED_ARCHETYPE,
     tick() {
-      this.width = 8;
-      this.height = 16 + this.age * 5;
-      while(this.leaves.length < (this.age / 4)) {
+      this.width = 5 + this.age / 4;
+      this.height = this.age * 5;
+      while(this.leaves.length < (this.age / 5)) {
         this.leaves.push(newLeaf());
       }
     },
     draw({ctx}: Camera) {
       ctx.save();
-      ctx.lineWidth = this.width;
-      ctx.lineCap = 'round';
       ctx.strokeStyle = 'green';
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.x, this.y - this.height);
-      ctx.stroke();
+      drawStem(ctx, this.x, this.y, this.width, this.height);
+      for(const leaf of this.leaves) {
+        drawLeaf(ctx, this.x, this.y - (this.height * leaf.position), leaf.rotation, leaf.size);
+      }
+      drawFlower(ctx, this.x, this.y - this.height, this.height / 8);
       ctx.restore();
     }
   },
   {
-    maxAge: 60,
-    tick() {
-      this.width = 12;
-      this.height = 16 + this.age * 10;
-    },
-    draw({ctx}: Camera) {
-      ctx.save();
-      ctx.lineWidth = this.width;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = 'green';
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.x, this.y - this.height);
-      ctx.stroke();
-      ctx.restore();
-    }
-  },
-  {
+    enemyArchetype: SLOW_RANGED_ARCHETYPE,
     maxAge: Infinity,
     tick() {
-      this.width = 20;
-      this.height = 16 + this.age * 10;
+      if(this.spawnEnemyCooldown <= 0) {
+        this.queueEnemy(0);
+        this.spawnEnemyCooldown = this.minTimeBetweenEnemySpawns;
+      }
     },
     draw({ctx}: Camera) {
       ctx.save();
-      ctx.lineWidth = this.width;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = 'green';
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.x, this.y - this.height);
-      ctx.stroke();
+      ctx.strokeStyle = 'brown';
+      ctx.translate(Math.random() * 4 - 2, Math.random() * 4 - 2);
+      drawStem(ctx, this.x + Math.random() * 4 - 2, this.y + Math.random() * 4 - 2, this.width, this.height);
+      for(const leaf of this.leaves) {
+        drawLeaf(ctx, this.x, this.y - (this.height * leaf.position), leaf.rotation, leaf.size);
+      }
+      drawFlower(ctx, this.x, this.y - this.height, 4 + this.height / 16);
       ctx.restore();
     }
-  },
+  }
 ];
 
 function drawLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, rotation: number, size: number) {
@@ -155,8 +167,25 @@ function drawLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, rotation:
   ctx.beginPath();
   ctx.ellipse(0, -1 * size, size / 3, size, 0, 0, 2 * Math.PI, false);
   ctx.fill();
-  ctx.stroke();
   ctx.restore();
+}
+
+function drawStem(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) {
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y - height);
+  ctx.stroke();
+}
+
+function drawFlower(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+  ctx.fillStyle = 'white';
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.stroke();
 }
 
 function newLeaf(): Leaf {

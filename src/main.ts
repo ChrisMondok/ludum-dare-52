@@ -4,19 +4,17 @@ import {Camera} from './camera.js';
 import {Editor} from './editor.js';
 import {Game} from './game.js';
 
-Editor.active = true;
-document.body.classList.add('editing');
-
 async function init() {
   const game = await Game.load('./levels.json');
   const editor = new Editor(game);
 
   const camera = new Camera();
-  document.body.appendChild(camera.canvas);
-  document.body.appendChild(editor.toolbar);
+  document.getElementById('canvas-container')!.appendChild(camera.canvas);
   camera.canvas.addEventListener('blur', () => {
     if(!Editor.active) game.paused = true;
   });
+
+  camera.canvas.focus();
 
   requestAnimationFrame(tick);
 
@@ -38,7 +36,7 @@ async function init() {
       camera.ctx.save();
       camera.ctx.textAlign = 'center';
       camera.ctx.textBaseline = 'middle';
-      camera.ctx.font = '72pt sans';
+      camera.ctx.font = '72pt Sans';
       camera.ctx.fillText('Paused', camera.width / 2, camera.height / 2);
       camera.ctx.restore();
     }

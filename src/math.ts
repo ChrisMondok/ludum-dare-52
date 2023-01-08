@@ -132,3 +132,8 @@ export function clamp(value: number, min: number, max: number): number {
   if(min > max) return clamp(value, max, min);
   return Math.max(Math.min(value, max), min);
 }
+
+export function randomBetween(min: number, max: number) {
+  const delta = max - min;
+  return min + Math.random() * delta;
+}

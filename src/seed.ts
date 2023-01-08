@@ -24,6 +24,7 @@ export class Seed implements Entity, Circle {
       this.dy += GRAVITY * dt;
     } else {
       this.dy = Math.min(this.dy, 0);
+      this.dx = 0;
     }
 
     if(!touches(this.level, this)) {

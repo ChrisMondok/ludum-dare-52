@@ -9,7 +9,6 @@ import {Game} from './game.js';
 import {Seed} from './seed.js';
 
 export class Editor {
-  readonly toolbar: HTMLElement;
   static active = false;
   private readonly newButton = makeButton('new', () => this.newLevel());
   private readonly saveButton = makeButton('save', () => this.save());
@@ -23,14 +22,13 @@ export class Editor {
   private activeThing: Entity|null= null;
 
   constructor(private readonly game: Game) {
-    this.toolbar = document.createElement('div');
-    this.toolbar.classList.add('editor', 'toolbar')
-    this.toolbar.appendChild(this.newButton);
-    this.toolbar.appendChild(this.saveButton);
-    this.toolbar.appendChild(this.saveAsButton);
-    this.toolbar.appendChild(this.loadButton);
-    this.toolbar.appendChild(this.revertButton);
-    this.toolbar.appendChild(this.toolSelect);
+    const toolbar = document.getElementById('toolbar')!;
+    toolbar.appendChild(this.newButton);
+    toolbar.appendChild(this.saveButton);
+    toolbar.appendChild(this.saveAsButton);
+    toolbar.appendChild(this.loadButton);
+    toolbar.appendChild(this.revertButton);
+    toolbar.appendChild(this.toolSelect);
     this.updateEnabledness();
   }
 
@@ -189,6 +187,7 @@ function makeButton(label: string, action: () => void) {
   const button = document.createElement('button');
   button.textContent = label;
   button.addEventListener('click', action);
+  button.classList.add('editor');
   return button;
 }
 
@@ -199,6 +198,7 @@ function makeSelect(options: string[]) {
     option.textContent = value;
     select.appendChild(option);
   }
+  select.classList.add('editor');
   return select;
 }
 
