@@ -13,11 +13,6 @@ export class Camera {
     canvas.height = this.height;
     canvas.tabIndex = 0;
     this.ctx = this.canvas.getContext('2d')!;
-
-    //     new ResizeObserver(([entry]) => {
-    //       this.width = this.canvas.width = entry.contentRect.width;
-    //       this.height = this.canvas.height = entry.contentRect.height;
-    //     }).observe(canvas);
   }
 
   clear() {

@@ -10,6 +10,7 @@ export class Game implements Entity {
 
   constructor(readonly levels: Level[]) {
     this.level = levels[0];
+    (window as any).game = this;
   }
 
   static async load(path: string) {
@@ -28,11 +29,11 @@ export class Game implements Entity {
   draw(camera: Camera) {
     this.level.draw(camera);
 
-    if(this.paused) {
+    if(this.paused && !this.level.gameOver) {
       camera.ctx.save();
       camera.ctx.textAlign = 'center';
       camera.ctx.textBaseline = 'middle';
-      camera.ctx.font = '72pt sans';
+      camera.ctx.font = '72pt sans-serif';
       camera.ctx.fillText('Paused', camera.width / 2, camera.height / 2);
       camera.ctx.restore();
     }

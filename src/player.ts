@@ -76,6 +76,7 @@ export class Player implements Entity, Rectangle {
         this.level.remove(seed);
         this.level.seeds++;
         this.level.playSoundAt('pickup', this);
+        this.level.score += 2;
       }
     }
   }
@@ -86,8 +87,6 @@ export class Player implements Entity, Rectangle {
     ctx.globalAlpha = 1 - ((this.invulnurableFor * 3) % 1);
     ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
     ctx.restore();
-    ctx.fillText(`seeds: ${this.level.seeds.toString()}`, 16, 16);
-    ctx.fillText(`health: ${this.health.toString()}`, 16, 32);
   }
 
   toString() {
@@ -153,6 +152,8 @@ export class Player implements Entity, Rectangle {
     plant.x = this.x;
     plant.y = this.y;
     this.level.add(plant);
+    this.level.playSoundAt('plant', this);
+    this.level.score += 2;
   }
 
   private doAttacking() {
@@ -186,12 +187,17 @@ export class SpawnPoint implements Entity, Circle {
   readonly radius = 8;
 
   tick() {
-    if(this.level.getEntitiesOfType(Player).length === 0) {
+    if(this.level.getEntitiesOfType(Player).length > 0) return;
+    if(this.lives) {
       const player = new Player();
       player.x = this.x;
       player.y = this.y;
       this.level.playSoundAt('playerspawn', this);
       this.level.add(player);
+      this.lives--;
+    } else {
+      this.level.gameOver = true;
+      this.level.remove(this);
     }
   }
 

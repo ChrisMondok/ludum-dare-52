@@ -1,6 +1,7 @@
 import {Entity} from './main.js';
 import {persistent, Type} from './serialization.js';
 import {Rectangle, distSquared, Point} from './math.js';
+import {Player, SpawnPoint} from './player.js';
 import {Camera} from './camera.js';
 import {playSoundAt, SoundName} from './sounds.js';
 
@@ -12,6 +13,8 @@ export class Level implements Entity, Rectangle {
   @persistent() entities: Entity[] = [];
   @persistent() name = "unnamed level";
   @persistent() seeds = 0;
+  @persistent() gameOver = false;
+  @persistent() score = 0;
   private readonly entitiesByType = new Map<any, any>;
 
   // huh that's weird
@@ -30,7 +33,29 @@ export class Level implements Entity, Rectangle {
     ctx.fillStyle = 'skyblue';
     ctx.fillRect(this.x, this.y, this.width, this.height);
     ctx.restore();
+
     for(const e of this.entities) e.draw?.(camera);
+
+    if(this.gameOver) {
+      ctx.save();
+      camera.ctx.textAlign = 'center';
+      camera.ctx.textBaseline = 'middle';
+      camera.ctx.font = '42pt sans-serif';
+      camera.ctx.fillText('Game Over', camera.width / 2, camera.height / 2 - 48);
+      camera.ctx.fillText(`Score: ${this.score}`, camera.width / 2, camera.height / 2 + 48);
+      ctx.restore();
+    } else {
+      ctx.save();
+      camera.ctx.font = '12pt sans-serif';
+      
+      const [firstSpawner] = this.getEntitiesOfType(SpawnPoint);
+      camera.ctx.fillText(`Lives: ${firstSpawner?.lives ?? 0}`, 16, 32);
+      const [player] = this.getEntitiesOfType(Player);
+      camera.ctx.fillText(`Health: ${player?.health ?? 0}`, 16, 48);
+      camera.ctx.fillText(`Seeds: ${this.seeds}`, 16, 64);
+      camera.ctx.fillText(`Score: ${this.score}`, 16, 80);
+      ctx.restore();
+    }
   }
 
   add(entity: Entity) {

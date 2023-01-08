@@ -38,6 +38,7 @@ export class Seed implements Entity, Circle {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
     ctx.fill();
+    ctx.stroke();
     ctx.restore();
   }
 

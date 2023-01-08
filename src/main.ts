@@ -32,15 +32,6 @@ async function init() {
     requestAnimationFrame(tick);
     doHotkeys();
     PRESSED_KEYS.clear();
-
-    if(game.paused) {
-      camera.ctx.save();
-      camera.ctx.textAlign = 'center';
-      camera.ctx.textBaseline = 'middle';
-      camera.ctx.font = '72pt Sans';
-      camera.ctx.fillText('Paused', camera.width / 2, camera.height / 2);
-      camera.ctx.restore();
-    }
   }
 
   function doHotkeys() {

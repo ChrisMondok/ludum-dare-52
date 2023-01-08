@@ -24,6 +24,9 @@ export class Plant implements Entity, Rectangle {
 
   @persistent() spawnEnemyCooldown = 0;
   readonly minTimeBetweenEnemySpawns = 15;
+  readonly minTimeBetweenLeaves = 2;
+  readonly maxTimeBetweenLeaves = 5;
+  @persistent() newLeafCooldown = 0;
 
   readonly xOrigin = 'center';
   readonly yOrigin = 'bottom';
@@ -33,6 +36,7 @@ export class Plant implements Entity, Rectangle {
   tick(dt: number) {
     this.age += dt;
     this.spawnEnemyCooldown = Math.max(0, this.spawnEnemyCooldown - dt);
+    this.newLeafCooldown = Math.max(0, this.newLeafCooldown - dt);
     while(this.stages.length && this.age > this.stages[0].maxAge) {
       this.stages.shift();
     }
@@ -49,6 +53,7 @@ export class Plant implements Entity, Rectangle {
     this.queueEnemy(2);
     this.level.remove(this);
     this.spawnGoodies();
+    this.level.score += this.leaves.length * 5;
   }
 
   distroyWithoutHarvesting() {
@@ -123,8 +128,10 @@ const plantStages: PlantStage[] = [
     tick() {
       this.width = 5 + this.age / 4;
       this.height = this.age * 5;
-      while(this.leaves.length < (this.age / 5)) {
+      if(this.newLeafCooldown === 0) {
+        this.newLeafCooldown = randomBetween(this.minTimeBetweenLeaves, this.maxTimeBetweenLeaves);
         this.leaves.push(newLeaf());
+        this.level.playSoundAt('newleaf', this);
       }
     },
     draw({ctx}: Camera) {

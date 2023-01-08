@@ -15,13 +15,15 @@ const sounds = {
   block: './sounds/block.wav',
   destroy:'./sounds/destroy.wav',
   jump:'./sounds/jump.wav',
+  melee: './sounds/melee.wav',
+  newleaf: './sounds/newleaf.wav',
   ouch:'./sounds/ouch.wav',
   pickup:'./sounds/pickup.wav',
+  plant: './sounds/plant.wav',
   playerjump: './sounds/playerjump.wav',
   playerspawn: './sounds/playerspawn.wav',
   shoot:'./sounds/shoot.wav',
   spawn: './sounds/spawn.wav',
-  melee: './sounds/melee.wav',
 };
 
 export function playSoundAt(sound: SoundName, x: number, y = 0, z = -1) {
