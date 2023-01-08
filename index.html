@@ -24,13 +24,35 @@
       }
 
       #canvas-container {
+        display: flex;
         flex: 1 1 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+      }
+
+      canvas {
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      dialog {
+        padding: 0 1em;
       }
 
       .toolbar {
+        padding: 1ex;
         display: flex;
         gap: 1ex;
         justify-content: flex-end;
+        border-top: 1px solid currentcolor;
+      }
+
+      dialog .toolbar {
+        margin-left: -1em;
+        margin-right: -1em;
+        margin-top: 1ex;
       }
        
       table {
