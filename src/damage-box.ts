@@ -8,7 +8,7 @@ import {Enemy} from './enemy.js';
 import {Player} from './player.js';
 
 export class DamageBox implements Entity, Rectangle {
-  @persistent() target: 'enemy'|'player' = 'enemy';;
+  @persistent() target: 'enemy'|'player' = 'enemy';
   @persistent() x = 0;
   @persistent() y = 0;
   @persistent() dx = 0;
@@ -17,7 +17,8 @@ export class DamageBox implements Entity, Rectangle {
   @persistent() height = GRID_SIZE;
   @persistent() ttl = 0.00001;
   @persistent() impactX = 0;
-  @persistent() impactY = 0;
+  @persistent() impactY = -300;
+  @persistent() blocksAttacks = false;
 
   readonly xOrigin = 'center';
   readonly yOrigin = 'center';
@@ -30,10 +31,20 @@ export class DamageBox implements Entity, Rectangle {
     this.x += this.dx * dt;
     this.y += this.dy * dt;
     let hit = false;
+    if(this.blocksAttacks) {
+      for(const other of this.level.getEntitiesOfType(DamageBox)) {
+        if(other.target === this.target) continue;
+        if(touches(this, other)) {
+          console.log('blocked');
+          this.level.remove(this);
+          this.level.remove(other);
+          return;
+        }
+      }
+    }
     for(const target of this.getPotentialTargets()) {
       if(touches(this, target)) {
-        hit = true;
-        target.takeDamage(this);
+        hit = target.takeDamage(this) || hit;
       }
     }
     if(hit) this.level.remove(this);
@@ -57,5 +68,5 @@ export class DamageBox implements Entity, Rectangle {
 }
 
 type Damageable = Entity&Shape&{
-  takeDamage(source: DamageBox): void;
+  takeDamage(source: DamageBox): boolean;
 }

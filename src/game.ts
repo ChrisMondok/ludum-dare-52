@@ -6,6 +6,8 @@ import {Camera} from './camera.js';
 export class Game implements Entity {
   level: Level;
 
+  paused = false;
+
   constructor(readonly levels: Level[]) {
     this.level = levels[0];
   }
@@ -20,10 +22,19 @@ export class Game implements Entity {
   }
 
   tick(dt: number) {
-    this.level.tick(dt);
+    if(!this.paused) this.level.tick(dt);
   }
 
   draw(camera: Camera) {
     this.level.draw(camera);
+
+    if(this.paused) {
+      camera.ctx.save();
+      camera.ctx.textAlign = 'center';
+      camera.ctx.textBaseline = 'middle';
+      camera.ctx.font = '72pt sans';
+      camera.ctx.fillText('Paused', camera.width / 2, camera.height / 2);
+      camera.ctx.restore();
+    }
   }
 }

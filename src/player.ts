@@ -9,13 +9,22 @@ import {Entity} from './main.js';
 import {Level} from './level.js';
 import {Terrain} from './terrain.js';
 import {Camera} from './camera.js';
-import {Rectangle, Circle, touches, distSquared} from './math.js';
+import {Rectangle, Circle, touches, distSquared, clamp, getLeftOf, getRightOf} from './math.js';
 
 const GROUND_SPEED = 10 * GRID_SIZE;
 const GROUND_ACCELERATION = 50 * GRID_SIZE;
 const JUMP_SPEED = GRAVITY / 3.5;
 
 export class Player implements Entity, Rectangle {
+  readonly height = GRID_SIZE;
+  readonly width = GRID_SIZE / 2;
+  readonly xOrigin = 'center';
+  readonly yOrigin = 'bottom';
+  readonly minTimeBetweenAttacks = 0.5;
+  readonly attackSpeed = 500;
+  readonly attackTTL = 0.10;
+  readonly invulnurabilityTime = 1;
+
   @persistent() x = 0;
   @persistent() y = 0;
   @persistent() dx = 0;
@@ -28,19 +37,16 @@ export class Player implements Entity, Rectangle {
   @persistent() attackCooldown = 0;
   @persistent() attackDirection = 1;
 
-  readonly height = GRID_SIZE;
-  readonly width = GRID_SIZE / 2;
-  readonly xOrigin = 'center';
-  readonly yOrigin = 'bottom';
-  readonly minTimeBetweenAttacks = 0.5;
-  readonly attackSpeed = 500;
-  readonly attackTTL = 0.10;
+  @persistent() invulnurableFor = this.invulnurabilityTime;
+  @persistent() health = 5;
 
   tick(dt: number) {
     this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+    this.invulnurableFor = Math.max(0, this.invulnurableFor - dt);
     const distanceToGround = Terrain.getDistanceToGround(this.level, this);
     const distanceToCeiling = Terrain.getDistanceToCeiling(this.level, this);
     this.x += this.dx * dt;
+    this.x = clamp(this.x, getLeftOf(this.level) + this.width / 2, getRightOf(this.level) - this.width / 2);
     if(this.dy * dt > distanceToGround) {
       this.dy = 0;
       this.y += distanceToGround;
@@ -71,22 +77,31 @@ export class Player implements Entity, Rectangle {
       if(touches(this, seed)) {
         this.level.remove(seed);
         this.seeds++;
-        console.log(this.seeds);
       }
     }
   }
 
   draw({ctx}: Camera) {
+    ctx.save();
     ctx.beginPath();
+    ctx.globalAlpha = 1 - ((this.invulnurableFor * 3) % 1);
     ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
+    ctx.restore();
+    ctx.fillText(`seeds: ${this.seeds.toString()}`, 16, 16);
   }
 
   toString() {
     return `player at ${this.x}, ${this.y}`;
   }
 
-  takeDamage() {
-    console.log('ouch');
+  takeDamage(source: DamageBox) {
+    if(this.invulnurableFor > 0) return false;
+    this.dx += source.impactX;
+    this.dy += source.impactY;
+    this.invulnurableFor = this.invulnurabilityTime;
+    this.health--;
+    if(this.health < 0) this.level.remove(this);
+    return true;
   }
 
   private doWalking(dt: number) {
@@ -101,7 +116,7 @@ export class Player implements Entity, Rectangle {
       this.dx += delta;
     }
 
-    if(PRESSED_KEYS.has('KeyW') || PRESSED_KEYS.has('KeyI')) {
+    if(PRESSED_KEYS.has('KeyW') || PRESSED_KEYS.has('KeyI') || PRESSED_KEYS.has('Space')) {
       this.dy -= JUMP_SPEED;
     }
   }
@@ -149,6 +164,7 @@ export class Player implements Entity, Rectangle {
       attack.dx = this.dx + this.attackSpeed * this.attackDirection;
       attack.dy = this.dy;
       attack.ttl = this.attackTTL;
+      attack.blocksAttacks = true;
       this.level.add(attack);
     }
   }
@@ -158,6 +174,7 @@ export class SpawnPoint implements Entity, Circle {
   @persistent() x = 0;
   @persistent() y = 0;
   @persistent() level!: Level;
+  @persistent() lives = 3;
 
   readonly radius = 8;
 

@@ -1,16 +1,88 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8"/>
     <title> Game </title>
     <script type="module" src="dist/main.js"></script>
+    <script>
+      function showHelp() {
+        document.getElementById('how-to-play').showModal();
+      }
+    </script>
     <style>
       body:not(.editing) .editor { display: none; }
 
       .toolbar {
         display: flex;
         gap: 1ex;
+        justify-content: flex-end;
       }
+       
+      table {
+        width: 100%;
+      }
+
+      tbody td {
+        width: 3em;;
+      }
+
+      td, th {
+        text-align: center;
+        border: 1px solid black;
+      }
+
     </style>
   </head>
-  <body></body>
+  <body>
+    <dialog id="how-to-play">
+      <h1> Instructions </h1>
+      <h2> How to play </h1>
+      <p>
+      <ul>
+        <li> Gather seeds to plant plants </li>
+        <li> Harvest crops to gain resources </li>
+        <li> When a plant is uprooted, it will attack! </li>
+        <li> You can block enemy attacks with your attacks </li>
+      </ul>
+      </p>
+
+      <h2> Controls </h2>
+      <table>
+        <tr>
+          <th> Move Left </th>
+          <td> <kbd>j</kbd> </td>
+          <td> <kbd>a</kbd> </td>
+          <td> <kbd>←</kbd> </td>
+        </tr>
+        <tr>
+          <th> Move Right </th>
+          <td> <kbd>l</kbd> </td>
+          <td> <kbd>d</kbd> </td>
+          <td> <kbd>→</kbd> </td>
+        </tr>
+        <tr>
+          <th> Jump </th>
+          <td> <kbd>i</kbd> </td>
+          <td> <kbd>w</kbd> </td>
+          <td> <kbd>Space</kbd> </td>
+        </tr>
+        <tr>
+          <th> Harvest / Plant </th>
+          <td> <kbd>k</kbd> </td>
+          <td> <kbd>s</kbd> </td>
+          <td> <kbd>↓</kbd> </td>
+        </tr>
+        <tr>
+          <th> Attack </th>
+          <td> <kbd>x</kbd> </td>
+          <td colspan="2"> <kbd>Shift</kbd> </td>
+        </tr>
+      </table>
+
+      <form class="toolbar" method="dialog">
+        <button> Got it </button>
+      </form>
+    </dialog>
+    <button onclick="showHelp()"> How to play </button>
+  </body>
 </html>

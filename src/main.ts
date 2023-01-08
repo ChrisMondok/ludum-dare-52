@@ -14,6 +14,9 @@ async function init() {
   const camera = new Camera();
   document.body.appendChild(camera.canvas);
   document.body.appendChild(editor.toolbar);
+  camera.canvas.addEventListener('blur', () => {
+    if(!Editor.active) game.paused = true;
+  });
 
   requestAnimationFrame(tick);
 
@@ -21,7 +24,7 @@ async function init() {
   function tick(now: number) {
     if(then) {
       const dt = (now - then) / 1000;
-      if(!Editor.active) game.tick(dt);
+      game.tick(dt);
       camera.clear();
       if(Editor.active) camera.drawGrid();
       game.draw(camera);
@@ -30,6 +33,15 @@ async function init() {
     requestAnimationFrame(tick);
     doHotkeys();
     PRESSED_KEYS.clear();
+
+    if(game.paused) {
+      camera.ctx.save();
+      camera.ctx.textAlign = 'center';
+      camera.ctx.textBaseline = 'middle';
+      camera.ctx.font = '72pt sans';
+      camera.ctx.fillText('Paused', camera.width / 2, camera.height / 2);
+      camera.ctx.restore();
+    }
   }
 
   function doHotkeys() {
@@ -37,11 +49,23 @@ async function init() {
       Editor.active = !Editor.active
       document.body.classList.toggle('editing', Editor.active);
     }
+
+    if(PRESSED_KEYS.has('KeyP')) game.paused = !game.paused;
   }
 
-  camera.canvas.addEventListener('mousedown', evt => editor.mousedown(evt));
-  camera.canvas.addEventListener('mouseup', evt => editor.mouseup(evt));
-  camera.canvas.addEventListener('mousemove', evt => editor.mousemove(evt));
+  camera.canvas.addEventListener('mousedown', evt => {
+    if(Editor.active) editor.mousedown(evt);
+  });
+  camera.canvas.addEventListener('mouseup', evt => {
+    if(Editor.active) {
+      editor.mouseup(evt);
+    } else {
+      game.paused = false;
+    }
+  });
+  camera.canvas.addEventListener('mousemove', evt => {
+    if(Editor.active) editor.mousemove(evt);
+  });
   camera.canvas.addEventListener('contextmenu', evt => {
     if(Editor.active) evt.preventDefault();
   });

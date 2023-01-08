@@ -110,6 +110,24 @@ export function getBottomOf(shape: Shape) {
   }
 }
 
+export function getVerticalCenterOf(shape: Shape): number {
+  if(isRectangle(shape)) {
+    switch(shape.yOrigin) {
+      case 'top': return shape.y + shape.height / 2;
+      case 'center': return shape.y;
+      case 'bottom': return shape.y - shape.height / 2;
+    }
+  }
+  return shape.y;
+}
+
+export function getHeightOf(shape: Shape) {
+  if(isRectangle(shape)) return shape.height;
+  if(isCircle(shape)) return 2 * shape.radius;
+  console.warn('accessing height of a point?');
+  return 0;
+}
+
 export function clamp(value: number, min: number, max: number): number {
   if(min > max) return clamp(value, max, min);
   return Math.max(Math.min(value, max), min);

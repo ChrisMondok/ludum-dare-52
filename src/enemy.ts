@@ -1,58 +1,29 @@
 import {GRID_SIZE, GRAVITY} from './constants.js';
 import {Player} from './player.js';
-import {Rectangle, Shape, Point, getBottomOf, getTopOf, getRightOf, getLeftOf, clamp, distSquared} from './math.js';
+import {Rectangle, Shape, Point, getBottomOf, getTopOf, getRightOf, getLeftOf, clamp, distSquared, getVerticalCenterOf} from './math.js';
 import {Camera} from './camera.js';
 import {Terrain} from './terrain.js';
 import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Level} from './level.js';
 import {DamageBox} from './damage-box.js';
-
-export class Spawner implements Entity, Point {
-  @persistent() readonly enemy!: Enemy;
-  @persistent() timeUntilSpawned!: number;
-
-  get x() {
-    return this.enemy.x;
-  }
-  
-  get y() {
-    return this.enemy.y;
-  }
-
-  // note: ctor args will not be set when deserializing!
-  constructor(enemy: Enemy, delay: number) {
-    this.enemy = enemy;
-    this.timeUntilSpawned = delay;
-  }
-
-  level!: Level;
-
-  tick(dt: number) {
-    if(!this.enemy) throw new Error(`EnemySpawner wasn't set up right`);
-    this.timeUntilSpawned -= dt;
-    if(this.timeUntilSpawned <= 0) {
-      this.level.remove(this);
-      this.level.add(this.enemy);
-    }
-  }
-
-  draw({ctx}: Camera) {
-    // if(!Editor.active) return;
-    ctx.save();
-    ctx.fillStyle = 'coral';
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, 8, 0, 2 * Math.PI, false);
-    ctx.fill();
-    ctx.restore();
-    ctx.fillText(this.timeUntilSpawned.toFixed(2), this.x, this.y - 10);
-  }
-}
+import {Editor} from './editor.js';
 
 export class Enemy implements Entity, Rectangle {
-  readonly minTimeBetweenJumps = 2;
   readonly jumpSpeed = GRAVITY / 4;
   readonly walkSpeed = 15 * GRID_SIZE;
+  readonly groundAcceleration = 50 * GRID_SIZE;
+  readonly maxDistanceFromPlayer = GRID_SIZE * 8;
+  readonly minDistanceFromPlayer = GRID_SIZE * 3;
+  readonly minTimeBetweenAttacks = 2;
+  readonly minTimeBetweenJumps = 2.5;
+  readonly attackSpeed = 300;
+  readonly attackTTL = 5;
+
+  readonly level!: Level;
+
+  readonly xOrigin = 'center';
+  readonly yOrigin = 'bottom';
 
   @persistent() x = 0;
   @persistent() y = 0;
@@ -60,54 +31,14 @@ export class Enemy implements Entity, Rectangle {
   @persistent() dy = 0;
   @persistent() health = 2;
 
-  readonly maxDistanceFromPlayer = GRID_SIZE * 8;
-  readonly minDistanceFromPlayer = GRID_SIZE * 3;
-
   @persistent() width = GRID_SIZE / 2;
   @persistent() height = GRID_SIZE;
 
   @persistent() jumpCooldown = this.minTimeBetweenJumps;
-  readonly groundAcceleration = 50 * GRID_SIZE;
-
-  draw({ctx}: Camera) {
-    ctx.save();
-    ctx.fillStyle = 'red';
-    ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
-
-    ctx.strokeStyle = 'red';
-    ctx.strokeRect(this.moveTarget.x - 5.5, this.moveTarget.y - 5.5, 10, 10);
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    ctx.lineTo(this.moveTarget.x, this.moveTarget.y);
-    ctx.stroke();
-
-    if(this.target) {
-      ctx.beginPath();
-      ctx.arc(this.target.x, this.target.y, this.minDistanceFromPlayer, 0, Math.PI, true);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(this.target.x, this.target.y, this.maxDistanceFromPlayer, 0, Math.PI, true);
-      ctx.stroke();
-    }
-
-    if(this.jumpTarget) {
-      ctx.strokeStyle = 'blue';
-      ctx.strokeRect(this.jumpTarget.x - 5.5, this.jumpTarget.y - 5.5, 10, 10);
-    }
-
-    ctx.restore();
-  }
-
-  readonly xOrigin = 'center';
-  readonly yOrigin = 'bottom';
-
-  level!: Level;
-
-  target: (Entity&Shape)|null = null;
-
+  @persistent() target: (Entity&Shape)|null = null;
   @persistent() readonly moveTarget: Point = {x: 0, y: 0};
   @persistent() jumpTarget: Point|null = null;
+  @persistent() attackCooldown = this.minTimeBetweenAttacks;
 
   tick(dt: number) {
     this.updateTargets();
@@ -125,16 +56,51 @@ export class Enemy implements Entity, Rectangle {
       // in the air
       this.dy += GRAVITY * dt;
       return;
+    } else {
+
+      // don't fall through the ground
+      this.dy = Math.min(this.dy, 0);
+
+      if(this.dy === 0) this.walk(this.moveTarget, dt);
+
+      if(this.jumpTarget) {
+        this.jump();
+      }
+
+      this.doAttacking(dt);
     }
+  }
 
-    // don't fall through the ground
-    this.dy = Math.min(this.dy, 0);
+  draw({ctx}: Camera) {
+    ctx.save();
+    ctx.fillStyle = 'red';
+    ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
 
-    if(this.dy === 0) this.walk(this.moveTarget, dt);
+    if(Editor.active) {
+      ctx.strokeStyle = 'red';
+      ctx.strokeRect(this.moveTarget.x - 5.5, this.moveTarget.y - 5.5, 10, 10);
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.moveTarget.x, this.moveTarget.y);
+      ctx.stroke();
 
-    if(this.jumpTarget) {
-      this.jump();
+      if(this.target) {
+        ctx.beginPath();
+        ctx.arc(this.target.x, this.target.y, this.minDistanceFromPlayer, 0, Math.PI, true);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(this.target.x, this.target.y, this.maxDistanceFromPlayer, 0, Math.PI, true);
+        ctx.stroke();
+      }
+
+      if(this.jumpTarget) {
+        ctx.strokeStyle = 'blue';
+        ctx.strokeRect(this.jumpTarget.x - 5.5, this.jumpTarget.y - 5.5, 10, 10);
+      }
+
     }
+    ctx.restore();
   }
 
   takeDamage(source: DamageBox) {
@@ -142,6 +108,7 @@ export class Enemy implements Entity, Rectangle {
     this.dx += source.impactX;
     this.dy += source.impactY;
     if(this.health <= 0) this.level.remove(this);
+    return true;
   }
 
   private walk(to: Point, dt: number) {
@@ -239,7 +206,7 @@ export class Enemy implements Entity, Rectangle {
     const leftEdge = {x: getLeftOf(fromTerrain) - this.width, y: getTopOf(fromTerrain)};
     const rightEdge = {x: getRightOf(fromTerrain) + this.width, y: getTopOf(fromTerrain)};
 
-    if(this.x > this.target.x) {
+    if(this.x > this.moveTarget.x) {
       if(toTerrain.isBelow(leftEdge)) return leftEdge;
       if(toTerrain.isBelow(rightEdge)) return rightEdge;
     } else {
@@ -247,5 +214,25 @@ export class Enemy implements Entity, Rectangle {
       if(toTerrain.isBelow(leftEdge)) return leftEdge;
     }
     return null;
+  }
+
+  private doAttacking(dt: number) {
+    this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+    if(this.attackCooldown > 0) return;
+    if(!this.target) return;
+    const attackHeight = clamp(getVerticalCenterOf(this.target), this.y - this.height, this.y);
+    if(attackHeight >= getTopOf(this.target) && attackHeight <= getBottomOf(this.target)) {
+      this.attackCooldown = this.minTimeBetweenAttacks;
+      const direction = Math.sign(this.target.x - this.x);
+      const attack = new DamageBox();
+      attack.x = this.x;
+      attack.y = attackHeight;
+      attack.ttl = this.attackTTL;
+      attack.dx = direction * this.attackSpeed;
+      attack.target = 'player';
+      attack.impactY = -200;
+      attack.impactX = 200 * direction;
+      this.level.add(attack);
+    }
   }
 }

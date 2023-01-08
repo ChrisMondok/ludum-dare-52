@@ -10,70 +10,125 @@
       {
         "@id": 2,
         "@type": "Terrain",
-        "x": 96,
-        "y": 384,
-        "width": 192,
-        "height": 64
+        "x": 544,
+        "y": 608,
+        "width": 224,
+        "height": 192,
+        "jumpPaths": []
       },
       {
         "@id": 3,
         "@type": "Terrain",
-        "x": 576,
-        "y": 384,
-        "width": 192,
-        "height": 64
+        "x": 0,
+        "y": 736,
+        "width": 800,
+        "height": 64,
+        "jumpPaths": []
       },
       {
         "@id": 4,
-        "@type": "SpawnPoint",
-        "x": 136,
-        "y": 325,
-        "level": {
-          "@ref": 1
-        }
+        "@type": "Terrain",
+        "x": 32,
+        "y": 608,
+        "width": 192,
+        "height": 64,
+        "jumpPaths": []
       },
       {
         "@id": 5,
         "@type": "Terrain",
-        "x": 0,
-        "y": 480,
-        "width": 800,
-        "height": 96
+        "x": 320,
+        "y": 512,
+        "width": 128,
+        "height": 128,
+        "jumpPaths": []
       },
       {
         "@id": 6,
-        "@type": "Player",
-        "x": 237.81422543999722,
-        "y": 384,
-        "dx": -79.95199999999895,
-        "dy": 0,
+        "@type": "SpawnPoint",
+        "x": 129,
+        "y": 687,
         "level": {
           "@ref": 1
         },
-        "seeds": 11
+        "lives": 3
       },
       {
         "@id": 7,
-        "@type": "Plant",
-        "x": 390.7322695999976,
-        "y": 480,
-        "age": 2.8338999999999888,
-        "handedness": -1,
-        "leaves": [],
+        "@type": "Seed",
+        "x": 571,
+        "y": 579,
+        "dx": 0,
+        "dy": 0,
         "level": {
           "@ref": 1
         }
       },
       {
         "@id": 8,
-        "@type": "Spawner",
-        "enemy": {
-          "@id": 9,
-          "@type": "Enemy",
-          "x": 630,
-          "y": 384
-        },
-        "timeUntilSpawned": 0.7497500000000064
+        "@type": "Seed",
+        "x": 593,
+        "y": 578,
+        "dx": 0,
+        "dy": 0,
+        "level": {
+          "@ref": 1
+        }
+      },
+      {
+        "@id": 9,
+        "@type": "Seed",
+        "x": 617,
+        "y": 583,
+        "dx": 0,
+        "dy": 0,
+        "level": {
+          "@ref": 1
+        }
+      },
+      {
+        "@id": 10,
+        "@type": "Seed",
+        "x": 652,
+        "y": 590,
+        "dx": 0,
+        "dy": 0,
+        "level": {
+          "@ref": 1
+        }
+      },
+      {
+        "@id": 11,
+        "@type": "Seed",
+        "x": 680,
+        "y": 583,
+        "dx": 0,
+        "dy": 0,
+        "level": {
+          "@ref": 1
+        }
+      },
+      {
+        "@id": 12,
+        "@type": "Seed",
+        "x": 713,
+        "y": 583,
+        "dx": 0,
+        "dy": 0,
+        "level": {
+          "@ref": 1
+        }
+      },
+      {
+        "@id": 13,
+        "@type": "Seed",
+        "x": 735,
+        "y": 589,
+        "dx": 0,
+        "dy": 0,
+        "level": {
+          "@ref": 1
+        }
       }
     ],
     "name": "unnamed level"

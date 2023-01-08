@@ -11,6 +11,7 @@ export class Camera {
     const canvas = this.canvas = document.createElement('canvas');
     canvas.width = this.width;
     canvas.height = this.height;
+    canvas.tabIndex = 0;
     this.ctx = this.canvas.getContext('2d')!;
 
     new ResizeObserver(([entry]) => {

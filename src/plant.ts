@@ -3,7 +3,8 @@ import {Entity} from './main.js';
 import {persistent} from './serialization.js';
 import {Camera} from './camera.js';
 import {Level} from './level.js';
-import {Enemy, Spawner} from './enemy.js';
+import {Enemy} from './enemy.js';
+import {Spawner} from './spawner.js';
 
 export class Plant implements Entity, Rectangle {
   @persistent() x = 0;
