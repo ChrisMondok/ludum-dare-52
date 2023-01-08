@@ -135,8 +135,13 @@ export class Enemy implements Entity, Rectangle {
         ctx.moveTo(this.moveTarget.x, this.moveTarget.y);
         ctx.lineTo(this.jumpTarget.x, this.jumpTarget.y);
         ctx.stroke();
-      }
 
+        ctx.beginPath();
+        const jh = this.getMaxJumpHeight();
+        ctx.moveTo(this.x - GRID_SIZE, this.moveTarget.y - jh);
+        ctx.lineTo(this.x + GRID_SIZE, this.moveTarget.y - jh);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -169,15 +174,13 @@ export class Enemy implements Entity, Rectangle {
     if(this.jumpCooldown > 0) return;
     const climb = this.y - this.jumpTarget.y;
     const timeToTop = this.jumpSpeed / GRAVITY;
-    const jumpHeight = this.jumpSpeed * timeToTop + GRAVITY * Math.pow(timeToTop, 2) / 2;
+    const jumpHeight = this.getMaxJumpHeight();
     if(jumpHeight > climb) {
       const fallingDistance = jumpHeight - climb;
       const timeToFall = Math.sqrt(2 * fallingDistance / GRAVITY);
       const jumpTime = timeToTop + timeToFall;
       this.dy = -1 * this.jumpSpeed;
       this.dx = (this.jumpTarget.x - this.x) / jumpTime;
-      // jumps always come up, consistently, a little short and I can't figure out why.
-      this.dx *= 1.6;
       this.jumpCooldown = this.minTimeBetweenJumps;
     } else {
       console.log(`Aborting jump that's too high`);
@@ -186,7 +189,7 @@ export class Enemy implements Entity, Rectangle {
 
   private getMaxJumpHeight() {
     const timeToTop = this.jumpSpeed / GRAVITY;
-    return this.jumpSpeed * timeToTop + GRAVITY * Math.pow(timeToTop, 2) / 2;
+    return this.jumpSpeed * timeToTop - GRAVITY * Math.pow(timeToTop, 2) / 2;
   }
 
   private updateTargets() {
@@ -262,7 +265,7 @@ export class Enemy implements Entity, Rectangle {
     const leftEdge = {x: getLeftOf(fromTerrain) - this.width, y: getTopOf(fromTerrain)};
     const rightEdge = {x: getRightOf(fromTerrain) + this.width, y: getTopOf(fromTerrain)};
 
-    if(this.x > this.moveTarget.x) {
+    if(Math.abs(this.x - leftEdge.x) < Math.abs(this.x - rightEdge.x)) {
       if(toTerrain.isBelow(leftEdge)) return leftEdge;
       if(toTerrain.isBelow(rightEdge)) return rightEdge;
     } else {
