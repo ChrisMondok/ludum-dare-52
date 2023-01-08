@@ -49,35 +49,36 @@ export class Spawner implements Entity, Point {
 }
 
 export class Enemy implements Entity, Rectangle {
+  readonly minTimeBetweenJumps = 2;
+  readonly jumpSpeed = GRAVITY / 4;
+  readonly walkSpeed = 15 * GRID_SIZE;
+
   @persistent() x = 0;
   @persistent() y = 0;
   @persistent() dx = 0;
   @persistent() dy = 0;
 
-  maxDistanceFromPlayer = GRID_SIZE * 8;
-  minDistanceFromPlayer = GRID_SIZE * 3;
+  readonly maxDistanceFromPlayer = GRID_SIZE * 8;
+  readonly minDistanceFromPlayer = GRID_SIZE * 3;
 
+  @persistent() width = GRID_SIZE / 2;
+  @persistent() height = GRID_SIZE;
 
-  width = GRID_SIZE / 2;
-  height = GRID_SIZE;
-  jumpDelay = 2;
-  jumpSpeed = GRAVITY / 4;
-  walkSpeed = 15 * GRID_SIZE;
-  groundAcceleration = 50 * GRID_SIZE;
+  @persistent() jumpCooldown = this.minTimeBetweenJumps;
+  readonly groundAcceleration = 50 * GRID_SIZE;
 
   draw({ctx}: Camera) {
     ctx.save();
     ctx.fillStyle = 'red';
     ctx.fillRect(this.x - this.width / 2, this.y - this.height, this.width, this.height);
-    if(this.moveTarget) {
-      ctx.strokeStyle = 'red';
-      ctx.strokeRect(this.moveTarget.x - 5.5, this.moveTarget.y - 5.5, 10, 10);
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.moveTarget.x, this.moveTarget.y);
-      ctx.stroke();
-    }
+
+    ctx.strokeStyle = 'red';
+    ctx.strokeRect(this.moveTarget.x - 5.5, this.moveTarget.y - 5.5, 10, 10);
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.moveTarget.x, this.moveTarget.y);
+    ctx.stroke();
 
     if(this.target) {
       ctx.beginPath();
@@ -87,6 +88,12 @@ export class Enemy implements Entity, Rectangle {
       ctx.arc(this.target.x, this.target.y, this.maxDistanceFromPlayer, 0, Math.PI, true);
       ctx.stroke();
     }
+
+    if(this.jumpTarget) {
+      ctx.strokeStyle = 'blue';
+      ctx.strokeRect(this.jumpTarget.x - 5.5, this.jumpTarget.y - 5.5, 10, 10);
+    }
+
     ctx.restore();
   }
 
@@ -97,15 +104,14 @@ export class Enemy implements Entity, Rectangle {
 
   target: (Entity&Shape)|null = null;
 
-  @persistent() moveTarget: Point = {x: this.x, y: this.y};
-
-  private timeSpentOnWrongTerrain = 0;
+  @persistent() readonly moveTarget: Point = {x: 0, y: 0};
+  @persistent() jumpTarget: Point|null = null;
 
   tick(dt: number) {
     this.updateTargets();
+    this.jumpCooldown = Math.max(0, this.jumpCooldown - dt);
 
     const myTerrain = Terrain.getGroundBelow(this.level, this);
-    const targetTerrain = Terrain.getGroundBelow(this.level, this.moveTarget);
     const heightAboveGround = myTerrain ? getTopOf(myTerrain) - getBottomOf(this) : Infinity;
 
     // Enemies can't walk out of bounds
@@ -116,36 +122,17 @@ export class Enemy implements Entity, Rectangle {
     if(heightAboveGround > 0) {
       // in the air
       this.dy += GRAVITY * dt;
-      this.timeSpentOnWrongTerrain = 0;
       return;
     }
 
     // don't fall through the ground
     this.dy = Math.min(this.dy, 0);
 
-    if(!myTerrain || !targetTerrain) {
-      console.log(`I don't know what this means`);
-      this.walk(this, dt);
-      return;
+    this.walk(this.moveTarget, dt);
+
+    if(this.jumpTarget) {
+      this.jump();
     }
-
-    if(myTerrain === targetTerrain || targetTerrain.isBelow(this.moveTarget) && this.y < getTopOf(targetTerrain)) {
-      this.walk(this.moveTarget, dt);
-      return;
-    } 
-
-    // we have to jump
-    this.walk(this, dt);
-    this.timeSpentOnWrongTerrain += dt;
-
-    if(this.timeSpentOnWrongTerrain > this.jumpDelay) {
-      if(targetTerrain) {
-        this.jump();
-      } else {
-        throw new Error(`Trying to jump to nowhere`);
-      }
-    }
-    
   }
 
   private walk(to: Point, dt: number) {
@@ -164,7 +151,9 @@ export class Enemy implements Entity, Rectangle {
   }
 
   private jump() {
-    const climb = this.moveTarget.y - this.y;
+    if(!this.jumpTarget) return;
+    if(this.jumpCooldown > 0) return;
+    const climb = this.jumpTarget.y - this.y;
     const timeToTop = this.jumpSpeed / GRAVITY;
     const jumpHeight = this.jumpSpeed * timeToTop + GRAVITY * Math.pow(timeToTop, 2) / 2;
     if(jumpHeight > climb) {
@@ -172,14 +161,14 @@ export class Enemy implements Entity, Rectangle {
       const timeToFall = Math.sqrt(2 * fallingDistance / GRAVITY);
       const jumpTime = timeToTop + timeToFall;
       this.dy = -1 * this.jumpSpeed;
-      this.dx = (this.moveTarget.x - this.x) / jumpTime;
+      this.dx = (this.jumpTarget.x - this.x) / jumpTime;
       console.table({dx: this.dx, dy:  this.dy});
       // jumps always come up, consistently, a little short and I can't figure out why.
       this.dx *= 1.6;
+      this.jumpCooldown = this.minTimeBetweenJumps;
     } else {
-      console.log(`I can't jump that far`);
+      console.log(`I can't jump that high`);
     }
-    this.timeSpentOnWrongTerrain = 0;
   }
 
   private updateTargets() {
@@ -187,30 +176,63 @@ export class Enemy implements Entity, Rectangle {
       this.target = null;
     }
     if(!this.target) {
+      this.jumpTarget = null;
+      this.moveTarget.x = this.x;
+      this.moveTarget.y = this.y;
       this.target = this.level.closest(Player, this);
       console.log(`target is ${this.target}`);
     }
 
     if(!this.target) return;
 
+    const myTerrain = Terrain.getGroundBelow(this.level, this);
     const targetTerrain = Terrain.getGroundBelow(this.level, this.target);
 
-    if(!targetTerrain) return;
-    this.moveTarget.y = getTopOf(targetTerrain);
+    if(!myTerrain || !targetTerrain) {
+      this.jumpTarget = null;
+      this.moveTarget.x = this.x;
+      this.moveTarget.y = this.y;
+      return;
+    }
 
-    if(this.x > this.target.x) {
-      this.moveTarget.x = clamp(this.x, this.target.x + this.minDistanceFromPlayer, this.target.x + this.maxDistanceFromPlayer);
+    this.moveTarget.y = getTopOf(myTerrain);
+
+    if(myTerrain === targetTerrain) {
+      this.jumpTarget = null;
+      // set the move target to the target, since we're on the same ground
+      if(this.x > this.target.x) {
+        this.moveTarget.x = clamp(this.x, this.target.x + this.minDistanceFromPlayer, this.target.x + this.maxDistanceFromPlayer);
+      } else {
+        this.moveTarget.x = clamp(this.x, this.target.x - this.minDistanceFromPlayer, this.target.x - this.maxDistanceFromPlayer);
+      }
+
+      // now keep it within the terrain
+      this.moveTarget.x = clamp(this.moveTarget.x, getLeftOf(targetTerrain) + this.width, getRightOf(targetTerrain) - this.width);
     } else {
-      this.moveTarget.x = clamp(this.x, this.target.x - this.minDistanceFromPlayer, this.target.x - this.maxDistanceFromPlayer);
-    }
-
-    this.moveTarget.x = clamp(this.moveTarget.x, getLeftOf(targetTerrain) + this.width, getRightOf(targetTerrain) - this.width);
-
-    const myTerrain = Terrain.getGroundBelow(this.level, this);
-    if(myTerrain && myTerrain !== targetTerrain) {
       const fallPoint = this.getFallPoint(myTerrain, targetTerrain);
-      if(fallPoint) this.moveTarget = fallPoint;
+      if(fallPoint) {
+        this.jumpTarget = null;
+        this.moveTarget.x = fallPoint.x;
+        this.moveTarget.y = fallPoint.y;
+      } else {
+        // move to the closest point to the target on my terrain
+        this.moveTarget.x = clamp(this.target.x, getLeftOf(myTerrain) + this.width, getRightOf(myTerrain) - this.width);
+        this.jumpTarget = {
+          x: clamp(this.x, getLeftOf(targetTerrain) + this.width, getRightOf(targetTerrain) - this.width),
+          y: getTopOf(targetTerrain),
+        };
+      }
     }
+
+    //    if(!targetTerrain) return;
+    //
+    //    this.moveTarget.y = getTopOf(targetTerrain);
+    //
+    //
+    //    if(myTerrain && myTerrain !== targetTerrain) {
+    //      const fallPoint = this.getFallPoint(myTerrain, targetTerrain);
+    //      if(fallPoint) this.moveTarget = fallPoint;
+    //    }
   }
 
   private getFallPoint(fromTerrain: Terrain, toTerrain: Terrain): Point|null {
